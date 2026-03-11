@@ -1,1 +1,1 @@
-PARSER_MODE = "local"   # "cloud" or "local"
+PARSER_MODE = "cloud"   # "cloud" or "local"
