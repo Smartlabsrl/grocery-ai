@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AI Daily Meal Planner</string>
+    <string name="title_activity_main">AI Daily Meal Planner</string>
+    <string name="package_name">com.aidailymeal.app</string>
+    <string name="custom_url_scheme">com.aidailymeal.app</string>
+</resources>

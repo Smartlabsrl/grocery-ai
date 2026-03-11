@@ -1,0 +1,1 @@
+PARSER_MODE = "local"   # "cloud" or "local"
