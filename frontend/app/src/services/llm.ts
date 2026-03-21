@@ -19,23 +19,9 @@ export class LLMService {
   }
 
   private getBaseUrl(): string {
-    if (this.config.baseUrl) return this.config.baseUrl;
-    
-    switch (this.config.provider) {
-      case 'openai':
-        return 'https://api.openai.com/v1';
-  
-        case 'doubao':
-          return 'https://ark.cn-beijing.volces.com/api/v3';
-  
-      case 'tongyi':
-        // 🔥 必须使用 OpenAI compatible mode
-        return 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-  
-      case 'anthropic':
-        return 'https://api.anthropic.com/v1';
-    }
+    return "";
   }
+  
 
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {

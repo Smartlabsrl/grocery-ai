@@ -25,8 +25,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppStore } from '@/store/useAppStore';
 import { useLocation } from '@/hooks/useLocation';
-import { getLLMService } from '@/services/llm';
-import { getSupermarketScraperService } from '@/services/supermarketScraper';
 import type { Recipe } from '@/types';
 
 export function Home() {
@@ -39,11 +37,9 @@ export function Home() {
   const { 
     dailyMenu, 
     setDailyMenu, 
-    userPreferences, 
     selectedAddress,
     likeRecipe, 
     isRecipeLiked,
-    recipeHistory,
     llmConfig
   } = useAppStore();
   
@@ -55,8 +51,8 @@ export function Home() {
   
     try {
       const url = force
-        ? "/supermarket-deals?store=lidl&refresh=true"
-        : "/supermarket-deals?store=lidl";
+      ? "https://grocery-ai-backend-kli0.onrender.com/supermarket-deals?store=lidl&refresh=true"
+      : "https://grocery-ai-backend-kli0.onrender.com/supermarket-deals?store=lidl";
   
       const res = await fetch(url);
   
@@ -229,7 +225,7 @@ export function Home() {
             <Card className="p-8 text-center">
               <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-4">{t('home.noMenu')}</p>
-              <Button onClick={generateDailyMenu} disabled={isGenerating}>
+              <Button onClick={() => generateDailyMenu()} disabled={isGenerating}>
                 {isGenerating ? t('common.loading') : t('home.generateMenu')}
               </Button>
               {!llmConfig.apiKey && (
@@ -255,7 +251,7 @@ export function Home() {
                 {dailyMenu.usedDiscountItems.map((item, idx) => (
                   <Badge key={idx} variant="secondary" className="bg-green-50 text-green-700">
                     {item.name}
-                    <span className="ml-1 text-green-500">-{item.discountPercent}%</span>
+                    <span className="ml-1 text-green-500">-{item.discountPercentage}%</span>
                   </Badge>
                 ))}
               </div>
