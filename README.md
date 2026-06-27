@@ -94,7 +94,9 @@ Android/iOS (Capacitor) build steps.
 ## Project status
 
 **Working**
-- Flyer → deals → recipes pipeline for **Lidl** and **Mercator** (cloud LLM).
+- Flyer → deals → recipes pipeline (cloud LLM). Stores: **Lidl** and **Mercator**
+  resolve their current flyer fully dynamically; **Spar** and **Hofer** are wired
+  into the framework but need a flyer-URL override (see below).
 - Home page and Supermarket page render real backend data.
 - Restaurants page uses real **OpenStreetMap** (Overpass API) data — free, no API key.
 - Polished mobile UI, 6-language i18n, Capacitor mobile build config.
@@ -103,8 +105,11 @@ Android/iOS (Capacitor) build steps.
 - Flyer URLs are resolved dynamically (`flyer_sources.py`): **Mercator** is fully
   dynamic (its catalogs page lists the current PDF). **Lidl** uses the Schwarz
   `leaflets.schwarz` platform, whose weekly PDF sits behind an undocumented API and
-  isn't a stable public link, so it currently falls back to the `LIDL_FLYER_URL`
-  override. Adding a new chain = adding a resolver to `flyer_sources.py`.
+  isn't a stable public link, but is fully resolved via that API. **Spar** and
+  **Hofer** official sites bot-block server-side requests (HTTP 403, including from
+  datacenter/deployment IPs), so they have no automatic resolver yet and rely on the
+  `SPAR_FLYER_URL` / `HOFER_FLYER_URL` overrides. Adding a new chain = adding a
+  resolver to `flyer_sources.py`.
 - OpenStreetMap has no ratings/reviews/price level, and `opening_hours` parsing is
   best-effort, so those fields can be empty in the Restaurants UI.
 - No automated tests / CI yet.

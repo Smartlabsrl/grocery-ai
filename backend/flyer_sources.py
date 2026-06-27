@@ -84,9 +84,30 @@ def resolve_lidl():
     return flyer.get("pdfUrl") or flyer.get("hiResPdfUrl")
 
 
+def resolve_spar():
+    """Spar Slovenia (spar.si/letak).
+
+    The official site is behind aggressive bot protection (server-side requests,
+    incl. from datacenter IPs like the deployment host, get HTTP 403), so there
+    is no reliable server-side scrape yet. Set SPAR_FLYER_URL to the current
+    catalog PDF (handled by resolve_flyer_url)."""
+    return None
+
+
+def resolve_hofer():
+    """Hofer / Aldi Süd Slovenia (hofer.si).
+
+    Same situation as Spar: the official site bot-blocks server-side requests
+    (HTTP 403). Set HOFER_FLYER_URL to the current leaflet PDF until an official
+    API or licensed aggregator feed is wired up."""
+    return None
+
+
 # store id -> (display name, resolver)
 STORES = {
     "mercator": ("Mercator", resolve_mercator),
+    "spar": ("Spar", resolve_spar),
+    "hofer": ("Hofer", resolve_hofer),
     "lidl": ("Lidl", resolve_lidl),
 }
 
