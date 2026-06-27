@@ -23,6 +23,12 @@ CACHE_DURATION = 600  # 10 minutes
 
 
 def download_pdf(url, filename="temp.pdf"):
+    # A resolver may already have produced a local PDF (e.g. assembled from an
+    # image-based aggregator); use it directly instead of downloading.
+    if os.path.exists(url):
+        print("Using locally-prepared PDF:", url)
+        return url
+
     headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
     }

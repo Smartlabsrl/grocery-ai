@@ -4,12 +4,17 @@ Each store has a resolver that returns the URL of the *current* flyer PDF, so th
 backend no longer depends on hardcoded, weekly-expiring links. Add a new store by
 adding an entry to STORES with a resolver callable.
 
+A resolver returns either a remote flyer PDF URL, or a path to a locally-built
+PDF (used for stores scraped from an image-based aggregator). download_pdf in the
+server treats an existing local path as the file to use directly.
+
 Resolution order for a store (see resolve_flyer_url):
   1. explicit operator override env var  <STORE>_FLYER_URL   (universal escape hatch)
   2. the store's dynamic resolver
   3. None  -> caller surfaces a clear "could not resolve flyer" error
 """
 
+import io
 import os
 import re
 import requests
@@ -19,11 +24,61 @@ MOBILE_UA = (
     "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) "
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
 )
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
 _HEADERS = {"User-Agent": MOBILE_UA}
+
+# Aggregator fallback for chains whose official sites bot-block server requests.
+MOJLETAK_BASE = "https://moj-letak.si"
+FLYER_MAX_PAGES = int(os.getenv("FLYER_MAX_PAGES", "12"))
 
 
 def _get(url, **kwargs):
     return requests.get(url, headers=_HEADERS, timeout=30, **kwargs)
+
+
+def _mojletak_pdf(detail_path, store):
+    """Scrape a moj-letak.si catalog (served as page images) and assemble the
+    first FLYER_MAX_PAGES pages into a local PDF for OCR. Returns the local path,
+    or None on failure. Third-party source: best-effort and may break."""
+    try:
+        from PIL import Image
+
+        resp = requests.get(f"{MOJLETAK_BASE}/{detail_path}",
+                            headers={"User-Agent": _BROWSER_UA}, timeout=30)
+        resp.raise_for_status()
+
+        # Full-resolution page images look like `<id>-<width>-100000.jpg`;
+        # prefer the widest available, preserving document (page) order.
+        pages = []
+        for width in ("950", "900", "600"):
+            for u in re.findall(
+                rf"https?://moj-letak\.si/public/gimg/[\d/]+/\d+-{width}-100000\.jpg",
+                resp.text,
+            ):
+                if u not in pages:
+                    pages.append(u)
+            if pages:
+                break
+        if not pages:
+            print(f"No catalog page images found for {store} on moj-letak")
+            return None
+
+        imgs = []
+        for u in pages[:FLYER_MAX_PAGES]:
+            ir = requests.get(u, headers={"User-Agent": _BROWSER_UA}, timeout=30)
+            ir.raise_for_status()
+            imgs.append(Image.open(io.BytesIO(ir.content)).convert("RGB"))
+
+        dest = os.path.abspath(f"{store}_src.pdf")
+        imgs[0].save(dest, "PDF", save_all=True, append_images=imgs[1:])
+        print(f"Built {store} flyer PDF from {len(imgs)} moj-letak pages")
+        return dest
+    except Exception as e:
+        print(f"moj-letak resolution failed for {store}: {e}")
+        return None
 
 
 def _latest_by_date(paths):
@@ -85,22 +140,17 @@ def resolve_lidl():
 
 
 def resolve_spar():
-    """Spar Slovenia (spar.si/letak).
-
-    The official site is behind aggressive bot protection (server-side requests,
-    incl. from datacenter IPs like the deployment host, get HTTP 403), so there
-    is no reliable server-side scrape yet. Set SPAR_FLYER_URL to the current
-    catalog PDF (handled by resolve_flyer_url)."""
-    return None
+    """Spar Slovenia. The official site (spar.si) bot-blocks server-side requests
+    (HTTP 403), so the current catalog is scraped from the moj-letak.si aggregator
+    and assembled into a PDF. SPAR_FLYER_URL overrides this."""
+    return _mojletak_pdf("spar-katalogi/spar-katalog", "spar")
 
 
 def resolve_hofer():
-    """Hofer / Aldi Süd Slovenia (hofer.si).
-
-    Same situation as Spar: the official site bot-blocks server-side requests
-    (HTTP 403). Set HOFER_FLYER_URL to the current leaflet PDF until an official
-    API or licensed aggregator feed is wired up."""
-    return None
+    """Hofer / Aldi Süd Slovenia. The official site (hofer.si) bot-blocks
+    server-side requests (HTTP 403), so the current leaflet is scraped from the
+    moj-letak.si aggregator. HOFER_FLYER_URL overrides this."""
+    return _mojletak_pdf("hofer-katalogi/hofer-katalog", "hofer")
 
 
 # store id -> (display name, resolver)

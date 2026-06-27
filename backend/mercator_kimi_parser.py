@@ -181,6 +181,12 @@ def clean_and_rank_products(products):
                 normal = normal / 100
 
             discount_percent = round((normal - discount) / normal * 100, 2)
+
+            # Drop implausible discounts (usually a decimal OCR error, e.g.
+            # 0.39 read as 39 against 5.99 -> "-93%").
+            if discount_percent <= 0 or discount_percent >= 90:
+                continue
+
             p["discountPercent"] = discount_percent
 
             name = p["name"].lower()
