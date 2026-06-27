@@ -5,8 +5,8 @@ budget meal plans**. It downloads weekly flyers (PDF), extracts the discounted f
 items with an LLM, ranks the best deals, and proposes breakfast / lunch / dinner
 recipes built around what's on sale.
 
-> **Status:** working prototype / early MVP. One end-to-end pipeline (flyer → deals →
-> recipes) is live for Lidl & Mercator. The Restaurants page is still mock data. See
+> **Status:** working prototype / early MVP. The flyer → deals → recipes pipeline is
+> live for Lidl & Mercator, and the Restaurants page uses real OpenStreetMap data. See
 > [Project status](#project-status).
 
 ---
@@ -93,9 +93,11 @@ Android/iOS (Capacitor) build steps.
 **Working**
 - Flyer → deals → recipes pipeline for **Lidl** and **Mercator** (cloud LLM).
 - Home page and Supermarket page render real backend data.
+- Restaurants page uses real **OpenStreetMap** (Overpass API) data — free, no API key.
 - Polished mobile UI, 6-language i18n, Capacitor mobile build config.
 
 **Known gaps / next steps**
-- Restaurants page is still mock data.
 - Store coverage is limited to two chains with hardcoded flyer URLs.
+- OpenStreetMap has no ratings/reviews/price level, and `opening_hours` parsing is
+  best-effort, so those fields can be empty in the Restaurants UI.
 - No automated tests / CI yet.

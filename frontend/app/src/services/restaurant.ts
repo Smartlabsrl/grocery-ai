@@ -1,204 +1,236 @@
 import type { Restaurant, CuisineType, OpeningHours } from '@/types';
 
-// Mock data for restaurants
-const MOCK_RESTAURANTS: Restaurant[] = [
-  {
-    id: 'rest-1',
-    name: 'Golden Dragon Chinese',
-    cuisineType: ['chinese', 'asian'],
-    address: '123 Alexanderplatz, 10178 Berlin, Germany',
-    latitude: 52.5220,
-    longitude: 13.4135,
-    rating: 4.5,
-    reviewCount: 328,
-    priceRange: 2,
-    isOpen: true,
-    openingHours: {
-      monday: { open: '11:30', close: '22:00' },
-      tuesday: { open: '11:30', close: '22:00' },
-      wednesday: { open: '11:30', close: '22:00' },
-      thursday: { open: '11:30', close: '22:00' },
-      friday: { open: '11:30', close: '23:00' },
-      saturday: { open: '12:00', close: '23:00' },
-      sunday: { open: '12:00', close: '21:00' },
-    },
-    phone: '+49 30 12345678',
-    website: 'https://goldendragon.example.com',
-    deliveryAvailable: true,
-    promotion: '20% off on orders over €30',
-    featuredDishes: ['Kung Pao Chicken', 'Sweet & Sour Pork', 'Dim Sum Platter'],
-  },
-  {
-    id: 'rest-2',
-    name: 'Bella Italia',
-    cuisineType: ['western'],
-    address: '45 Friedrichstraße, 10117 Berlin, Germany',
-    latitude: 52.5120,
-    longitude: 13.3910,
-    rating: 4.3,
-    reviewCount: 256,
-    priceRange: 3,
-    isOpen: true,
-    openingHours: {
-      monday: { open: '12:00', close: '23:00' },
-      tuesday: { open: '12:00', close: '23:00' },
-      wednesday: { open: '12:00', close: '23:00' },
-      thursday: { open: '12:00', close: '23:00' },
-      friday: { open: '12:00', close: '24:00' },
-      saturday: { open: '12:00', close: '24:00' },
-      sunday: { open: '13:00', close: '22:00' },
-    },
-    phone: '+49 30 87654321',
-    website: 'https://bellaitalia.example.com',
-    deliveryAvailable: true,
-    promotion: 'Free delivery on first order',
-    featuredDishes: ['Margherita Pizza', 'Carbonara', 'Tiramisu'],
-  },
-  {
-    id: 'rest-3',
-    name: 'Green Garden Vegetarian',
-    cuisineType: ['vegetarian', 'simple'],
-    address: '78 Potsdamer Platz, 10785 Berlin, Germany',
-    latitude: 52.5098,
-    longitude: 13.3765,
-    rating: 4.7,
-    reviewCount: 189,
-    priceRange: 2,
-    isOpen: true,
-    openingHours: {
-      monday: { open: '10:00', close: '21:00' },
-      tuesday: { open: '10:00', close: '21:00' },
-      wednesday: { open: '10:00', close: '21:00' },
-      thursday: { open: '10:00', close: '21:00' },
-      friday: { open: '10:00', close: '22:00' },
-      saturday: { open: '10:00', close: '22:00' },
-      sunday: { open: '11:00', close: '20:00' },
-    },
-    phone: '+49 30 11223344',
-    website: 'https://greengarden.example.com',
-    deliveryAvailable: true,
-    promotion: 'Lunch special: 15% off 12-3pm',
-    featuredDishes: ['Buddha Bowl', 'Avocado Toast', 'Green Smoothie'],
-  },
-  {
-    id: 'rest-4',
-    name: 'Fit Kitchen',
-    cuisineType: ['fitness', 'simple'],
-    address: '200 Unter den Linden, 10117 Berlin, Germany',
-    latitude: 52.5168,
-    longitude: 13.3885,
-    rating: 4.6,
-    reviewCount: 412,
-    priceRange: 2,
-    isOpen: true,
-    openingHours: {
-      monday: { open: '07:00', close: '21:00' },
-      tuesday: { open: '07:00', close: '21:00' },
-      wednesday: { open: '07:00', close: '21:00' },
-      thursday: { open: '07:00', close: '21:00' },
-      friday: { open: '07:00', close: '21:00' },
-      saturday: { open: '08:00', close: '20:00' },
-      sunday: { open: '09:00', close: '19:00' },
-    },
-    phone: '+49 30 55667788',
-    website: 'https://fitkitchen.example.com',
-    deliveryAvailable: true,
-    promotion: 'Protein meal deal: €12.99',
-    featuredDishes: ['Grilled Chicken Bowl', 'Salmon Power Bowl', 'Protein Pancakes'],
-  },
-  {
-    id: 'rest-5',
-    name: 'Sakura Sushi',
-    cuisineType: ['asian', 'simple'],
-    address: '15 Kurfürstendamm, 10719 Berlin, Germany',
-    latitude: 52.5035,
-    longitude: 13.3280,
-    rating: 4.4,
-    reviewCount: 298,
-    priceRange: 3,
-    isOpen: true,
-    openingHours: {
-      monday: { open: '12:00', close: '22:30' },
-      tuesday: { open: '12:00', close: '22:30' },
-      wednesday: { open: '12:00', close: '22:30' },
-      thursday: { open: '12:00', close: '22:30' },
-      friday: { open: '12:00', close: '23:30' },
-      saturday: { open: '12:00', close: '23:30' },
-      sunday: { open: '13:00', close: '22:00' },
-    },
-    phone: '+49 30 99887766',
-    website: 'https://sakurasushi.example.com',
-    deliveryAvailable: true,
-    promotion: 'All-you-can-eat: €24.99',
-    featuredDishes: ['Salmon Nigiri', 'Dragon Roll', 'Miso Soup'],
-  },
-  {
-    id: 'rest-6',
-    name: 'Kebab House Halal',
-    cuisineType: ['simple'],
-    address: '56 Warschauer Straße, 10243 Berlin, Germany',
-    latitude: 52.5050,
-    longitude: 13.4490,
-    rating: 4.2,
-    reviewCount: 567,
-    priceRange: 1,
-    isOpen: true,
-    openingHours: {
-      monday: { open: '10:00', close: '02:00' },
-      tuesday: { open: '10:00', close: '02:00' },
-      wednesday: { open: '10:00', close: '02:00' },
-      thursday: { open: '10:00', close: '02:00' },
-      friday: { open: '10:00', close: '04:00' },
-      saturday: { open: '10:00', close: '04:00' },
-      sunday: { open: '11:00', close: '01:00' },
-    },
-    phone: '+49 30 33445566',
-    website: 'https://kebabhouse.example.com',
-    deliveryAvailable: true,
-    promotion: 'Family deal: 4 wraps for €20',
-    featuredDishes: ['Doner Kebab', 'Falafel Wrap', 'Mixed Grill Plate'],
-  },
-];
+// Restaurant data sourced from OpenStreetMap via the Overpass API (free, no API key).
+// Note: OSM has no ratings/reviews/price level, so those fields are left empty/unknown
+// and the UI degrades gracefully.
+
+const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+
+const DAY_ORDER = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+const DAY_NAMES: Record<string, string> = {
+  Mo: 'monday',
+  Tu: 'tuesday',
+  We: 'wednesday',
+  Th: 'thursday',
+  Fr: 'friday',
+  Sa: 'saturday',
+  Su: 'sunday',
+};
+
+// Map free-form OSM `cuisine` values onto the app's CuisineType set.
+const CUISINE_MAP: Record<string, CuisineType> = {
+  chinese: 'chinese',
+  cantonese: 'chinese',
+  sichuan: 'chinese',
+  dim_sum: 'chinese',
+  asian: 'asian',
+  japanese: 'asian',
+  sushi: 'asian',
+  ramen: 'asian',
+  korean: 'asian',
+  thai: 'asian',
+  vietnamese: 'asian',
+  indian: 'asian',
+  indonesian: 'asian',
+  italian: 'western',
+  pizza: 'western',
+  french: 'western',
+  american: 'western',
+  burger: 'western',
+  german: 'western',
+  mexican: 'western',
+  spanish: 'western',
+  greek: 'western',
+  mediterranean: 'western',
+  european: 'western',
+  steak_house: 'western',
+  steak: 'western',
+  regional: 'western',
+  international: 'western',
+  vegetarian: 'vegetarian',
+  vegan: 'vegetarian',
+  salad: 'fitness',
+  healthy: 'fitness',
+  organic: 'fitness',
+  poke: 'fitness',
+  breakfast: 'simple',
+  sandwich: 'simple',
+  cafe: 'simple',
+  coffee_shop: 'simple',
+  bakery: 'simple',
+  kebab: 'simple',
+  fast_food: 'simple',
+};
+
+interface OverpassElement {
+  type: string;
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+}
+
+function mapCuisine(raw?: string): CuisineType[] {
+  if (!raw) return ['simple'];
+  const tokens = raw.toLowerCase().split(/[;,]/).map((t) => t.trim());
+  const mapped = new Set<CuisineType>();
+  for (const token of tokens) {
+    const match = CUISINE_MAP[token];
+    if (match) mapped.add(match);
+  }
+  return mapped.size > 0 ? Array.from(mapped) : ['simple'];
+}
+
+function buildAddress(tags: Record<string, string>): string {
+  const parts = [
+    [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' '),
+    tags['addr:postcode'],
+    tags['addr:city'],
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
+// Best-effort parse of an OSM opening_hours string into a per-day {open, close} map.
+// Returns {} when the value is missing or too complex to parse (treated as unknown).
+function parseOpeningHours(value?: string): OpeningHours {
+  const result: OpeningHours = {};
+  if (!value) return result;
+
+  if (value.includes('24/7')) {
+    for (const abbr of DAY_ORDER) result[DAY_NAMES[abbr]] = { open: '00:00', close: '23:59' };
+    return result;
+  }
+
+  for (const rule of value.split(';')) {
+    const match = rule
+      .trim()
+      .match(/^([A-Za-z]{2})(?:-([A-Za-z]{2}))?\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/);
+    if (!match) continue;
+
+    const [, startDay, endDay, open, close] = match;
+    const startIdx = DAY_ORDER.indexOf(startDay);
+    if (startIdx === -1) continue;
+    const endIdx = endDay ? DAY_ORDER.indexOf(endDay) : startIdx;
+    if (endIdx === -1) continue;
+
+    for (let i = startIdx; i <= endIdx; i++) {
+      const dayName = DAY_NAMES[DAY_ORDER[i]];
+      if (dayName && !result[dayName]) result[dayName] = { open, close };
+    }
+  }
+
+  return result;
+}
+
+function isCurrentlyOpen(openingHours: OpeningHours): boolean {
+  // Unknown hours -> assume open so it is not hidden by the "open now" filter.
+  if (Object.keys(openingHours).length === 0) return true;
+
+  const now = new Date();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const hours = openingHours[dayNames[now.getDay()]];
+  if (!hours) return false;
+
+  const currentTime = now.getHours() * 60 + now.getMinutes();
+  const [openHour, openMin] = hours.open.split(':').map(Number);
+  const [closeHour, closeMin] = hours.close.split(':').map(Number);
+  const openTime = openHour * 60 + openMin;
+  const closeTime = closeHour * 60 + closeMin;
+
+  // Overnight hours (e.g. 17:00-01:00): open if before close OR after open.
+  if (closeTime < openTime) return currentTime >= openTime || currentTime <= closeTime;
+  return currentTime >= openTime && currentTime <= closeTime;
+}
+
+function toRad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function elementToRestaurant(
+  el: OverpassElement,
+  originLat: number,
+  originLon: number
+): Restaurant | null {
+  const tags = el.tags || {};
+  const lat = el.lat ?? el.center?.lat;
+  const lon = el.lon ?? el.center?.lon;
+  if (lat === undefined || lon === undefined || !tags.name) return null;
+
+  const openingHours = parseOpeningHours(tags.opening_hours);
+
+  return {
+    id: `osm-${el.type}-${el.id}`,
+    name: tags.name,
+    cuisineType: mapCuisine(tags.cuisine),
+    address: buildAddress(tags),
+    latitude: lat,
+    longitude: lon,
+    distance: calculateDistance(originLat, originLon, lat, lon),
+    rating: 0, // OSM has no ratings
+    reviewCount: 0,
+    priceRange: 0, // unknown
+    isOpen: isCurrentlyOpen(openingHours),
+    openingHours,
+    phone: tags.phone || tags['contact:phone'],
+    website: tags.website || tags['contact:website'],
+    deliveryAvailable: tags.delivery === 'yes' || tags.takeaway === 'yes',
+  };
+}
 
 export class RestaurantService {
-  private restaurants: Restaurant[] = MOCK_RESTAURANTS;
+  private cache = new Map<string, { items: Restaurant[]; timestamp: number }>();
+  private cacheDuration = 1000 * 60 * 30; // 30 minutes (be gentle with the free Overpass API)
 
-  private calculateDistance(
-    lat1: number, 
-    lon1: number, 
-    lat2: number, 
-    lon2: number
-  ): number {
-    const R = 6371;
-    const dLat = this.toRad(lat2 - lat1);
-    const dLon = this.toRad(lon2 - lon1);
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
+  private async fetchFromOverpass(
+    latitude: number,
+    longitude: number,
+    radiusKm: number
+  ): Promise<Restaurant[]> {
+    const radiusM = Math.round(radiusKm * 1000);
+    const cacheKey = `${latitude.toFixed(3)},${longitude.toFixed(3)},${radiusM}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.cacheDuration) {
+      return cached.items;
+    }
 
-  private toRad(deg: number): number {
-    return deg * (Math.PI / 180);
-  }
+    const query = `[out:json][timeout:25];
+(
+  node["amenity"="restaurant"](around:${radiusM},${latitude},${longitude});
+  way["amenity"="restaurant"](around:${radiusM},${latitude},${longitude});
+);
+out center tags 60;`;
 
-  private isCurrentlyOpen(openingHours: OpeningHours): boolean {
-    const now = new Date();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const currentDay = dayNames[now.getDay()];
-    const hours = openingHours[currentDay];
-    
-    if (!hours) return false;
+    try {
+      const response = await fetch(OVERPASS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      if (!response.ok) throw new Error(`Overpass error: ${response.status}`);
 
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-    const [openHour, openMin] = hours.open.split(':').map(Number);
-    const [closeHour, closeMin] = hours.close.split(':').map(Number);
-    const openTime = openHour * 60 + openMin;
-    const closeTime = closeHour * 60 + closeMin;
+      const data = await response.json();
+      const items: Restaurant[] = (data.elements as OverpassElement[])
+        .map((el) => elementToRestaurant(el, latitude, longitude))
+        .filter((r): r is Restaurant => r !== null)
+        .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
 
-    return currentTime >= openTime && currentTime <= closeTime;
+      this.cache.set(cacheKey, { items, timestamp: Date.now() });
+      return items;
+    } catch (error) {
+      console.error('Overpass restaurant fetch failed:', error);
+      return [];
+    }
   }
 
   async getNearbyRestaurants(
@@ -210,61 +242,39 @@ export class RestaurantService {
       priceRange?: number[];
       openNow?: boolean;
       deliveryOnly?: boolean;
-      minRating?: number;
+      minRating?: number; // ignored: OSM has no ratings
     } = {}
   ): Promise<Restaurant[]> {
-    const {
-      radius = 10,
-      cuisineType,
-      priceRange,
-      openNow = false,
-      deliveryOnly = false,
-      minRating = 0,
-    } = options;
+    const { radius = 10, cuisineType, priceRange, openNow = false, deliveryOnly = false } = options;
 
-    let results = this.restaurants
-      .map(r => ({
-        ...r,
-        distance: this.calculateDistance(latitude, longitude, r.latitude, r.longitude),
-        isOpen: this.isCurrentlyOpen(r.openingHours)
-      }))
-      .filter(r => r.distance! <= radius)
-      .filter(r => r.rating >= minRating);
+    let results = await this.fetchFromOverpass(latitude, longitude, radius);
 
     if (cuisineType && cuisineType.length > 0) {
-      results = results.filter(r => 
-        r.cuisineType.some(c => cuisineType.includes(c))
-      );
+      results = results.filter((r) => r.cuisineType.some((c) => cuisineType.includes(c)));
     }
 
     if (priceRange && priceRange.length > 0) {
-      results = results.filter(r => priceRange.includes(r.priceRange));
+      // Keep unknown-price (0) restaurants so the free data source isn't filtered away.
+      results = results.filter((r) => r.priceRange === 0 || priceRange.includes(r.priceRange));
     }
 
     if (openNow) {
-      results = results.filter(r => r.isOpen);
+      results = results.filter((r) => r.isOpen);
     }
 
     if (deliveryOnly) {
-      results = results.filter(r => r.deliveryAvailable);
+      results = results.filter((r) => r.deliveryAvailable);
     }
 
-    // Sort by distance and rating
-    return results.sort((a, b) => {
-      const distanceDiff = a.distance! - b.distance!;
-      if (distanceDiff !== 0) return distanceDiff;
-      return b.rating - a.rating;
-    });
+    return results;
   }
 
   async getRestaurantById(id: string): Promise<Restaurant | null> {
-    const restaurant = this.restaurants.find(r => r.id === id);
-    if (!restaurant) return null;
-    
-    return {
-      ...restaurant,
-      isOpen: this.isCurrentlyOpen(restaurant.openingHours)
-    };
+    for (const { items } of this.cache.values()) {
+      const found = items.find((r) => r.id === id);
+      if (found) return found;
+    }
+    return null;
   }
 
   async searchRestaurants(
@@ -272,19 +282,13 @@ export class RestaurantService {
     longitude: number,
     query: string
   ): Promise<Restaurant[]> {
+    const all = await this.fetchFromOverpass(latitude, longitude, 10);
     const lowerQuery = query.toLowerCase();
-    return this.restaurants
-      .map(r => ({
-        ...r,
-        distance: this.calculateDistance(latitude, longitude, r.latitude, r.longitude),
-        isOpen: this.isCurrentlyOpen(r.openingHours)
-      }))
-      .filter(r => 
+    return all.filter(
+      (r) =>
         r.name.toLowerCase().includes(lowerQuery) ||
-        r.cuisineType.some(c => c.toLowerCase().includes(lowerQuery)) ||
-        r.featuredDishes?.some(d => d.toLowerCase().includes(lowerQuery))
-      )
-      .sort((a, b) => a.distance! - b.distance!);
+        r.cuisineType.some((c) => c.toLowerCase().includes(lowerQuery))
+    );
   }
 
   getPriceRangeSymbol(range: number): string {
@@ -300,7 +304,6 @@ export class RestaurantService {
       radius: 5,
       cuisineType: preferredCuisines.length > 0 ? preferredCuisines : undefined,
       openNow: true,
-      minRating: 4.0,
     });
   }
 }
