@@ -8,10 +8,39 @@ import os
 
 MOONSHOT_API_KEY = os.getenv("MOONSHOT_API_KEY")
 
+# Grocery deals live in the first pages of a flyer; large flyers (e.g. Lidl's
+# 66-page / 47 MB catalog) otherwise blow past the OCR/request timeout.
+FLYER_MAX_PAGES = int(os.getenv("FLYER_MAX_PAGES", "12"))
+
 client = OpenAI(
     api_key=MOONSHOT_API_KEY,   # ✅ 这里不要加引号
     base_url="https://api.moonshot.cn/v1",
 )
+
+
+def _trim_pdf(pdf_path: str, max_pages: int = FLYER_MAX_PAGES) -> str:
+    """Return a path to a PDF with at most `max_pages` pages (to bound OCR time).
+    Falls back to the original path if trimming isn't needed or fails."""
+    try:
+        from pypdf import PdfReader, PdfWriter
+
+        reader = PdfReader(pdf_path)
+        if len(reader.pages) <= max_pages:
+            return pdf_path
+
+        writer = PdfWriter()
+        for page in reader.pages[:max_pages]:
+            writer.add_page(page)
+
+        trimmed = pdf_path.rsplit(".", 1)[0] + "_trim.pdf"
+        with open(trimmed, "wb") as f:
+            writer.write(f)
+        print(f"Trimmed PDF {len(reader.pages)} -> {max_pages} pages for OCR")
+        return trimmed
+    except Exception as e:
+        print("PDF trim skipped:", e)
+        return pdf_path
+
 
 def extract_products_from_pdf(pdf_path: str):
 
@@ -33,8 +62,9 @@ def extract_products_from_pdf(pdf_path: str):
     elif PARSER_MODE == "cloud":
         print("Using CLOUD parser (Moonshot OCR + Kimi)...")
 
+        ocr_path = _trim_pdf(pdf_path)
         file_object = client.files.create(
-            file=Path(pdf_path),
+            file=Path(ocr_path),
             purpose="file-extract"
         )
 

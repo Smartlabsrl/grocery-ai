@@ -49,12 +49,39 @@ def resolve_mercator():
     return "https://www.mercator.si" + best if best else None
 
 
+LIDL_OVERVIEW_URL = "https://www.lidl.si/c/spletni-katalog/s10019133"
+LIDL_FLYER_API = "https://endpoints.leaflets.schwarz/v4/flyer"
+
+
 def resolve_lidl():
-    """Lidl (Slovenia) serves flyers through the Schwarz `leaflets.schwarz`
-    platform, where the weekly PDF sits behind an undocumented API and is not
-    exposed as a stable public link. Until that is wired up, rely on the
-    LIDL_FLYER_URL operator override (handled by resolve_flyer_url)."""
-    return None
+    """Lidl (Slovenia) serves flyers via the Schwarz `leaflets.schwarz` platform.
+
+    1. The overview page lists the current weekly catalog as a slug of the form
+       `lidlov-katalog-<year>-kw<week>` (Kalenderwoche). Pick the newest.
+    2. The leaflet API returns that flyer's metadata, including the PDF URL.
+    """
+    overview = _get(LIDL_OVERVIEW_URL)
+    overview.raise_for_status()
+
+    slugs = re.findall(r"lidlov-katalog-\d{4}-kw\d+", overview.text)
+    if not slugs:
+        print("No Lidl weekly catalog slug found on overview page")
+        return None
+
+    def week_key(slug):
+        m = re.search(r"(\d{4})-kw(\d+)", slug)
+        return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+
+    slug = max(set(slugs), key=week_key)
+
+    resp = _get(LIDL_FLYER_API, params={
+        "flyer_identifier": slug,
+        "region_id": 0,
+        "region_code": 0,
+    })
+    resp.raise_for_status()
+    flyer = (resp.json() or {}).get("flyer") or {}
+    return flyer.get("pdfUrl") or flyer.get("hiResPdfUrl")
 
 
 # store id -> (display name, resolver)
