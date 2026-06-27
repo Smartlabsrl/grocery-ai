@@ -10,6 +10,7 @@ from config import RECIPE_MODE
 from database import init_db, save_deals, get_latest_deals
 from mercator_kimi_parser import extract_products_from_pdf, clean_and_rank_products
 from recipe_engine import generate_recipes
+from flyer_sources import STORES, list_stores, resolve_flyer_url
 
 app = Flask(__name__)
 CORS(app)
@@ -19,11 +20,6 @@ lock = threading.Lock()
 cache_data = {}
 cache_time = {}
 CACHE_DURATION = 600  # 10 minutes
-
-SUPERMARKET_PDFS = {
-    "mercator": "https://www.mercator.si/assets/Katalogi/2026-02-19-Redni-katalog-200x288mm-web3.pdf",
-    "lidl": "https://object.storage.eu01.onstackit.cloud/leaflets/pdfs/019c7b2a-bd4b-7842-812c-bf1eff91cebe/Lidlov-katalog-od-26-2-07.pdf"
-}
 
 
 def download_pdf(url, filename="temp.pdf"):
@@ -67,10 +63,7 @@ def health():
 
 @app.route("/nearby-supermarkets")
 def nearby_supermarkets():
-    return jsonify([
-        {"id": "mercator", "name": "Mercator"},
-        {"id": "lidl", "name": "Lidl"}
-    ])
+    return jsonify(list_stores())
 
 
 @app.route("/supermarket-deals")
@@ -78,7 +71,7 @@ def supermarket_deals():
     store = request.args.get("store")
     refresh = request.args.get("refresh")
 
-    if store not in SUPERMARKET_PDFS:
+    if store not in STORES:
         return jsonify({"error": "Store not supported"}), 400
 
     # 1) memory cache
@@ -99,8 +92,16 @@ def supermarket_deals():
     # 3) real processing
     with lock:
         try:
+            print("Resolving current flyer URL...")
+            flyer_url = resolve_flyer_url(store)
+            if not flyer_url:
+                return jsonify({
+                    "error": f"Could not resolve a current flyer for '{store}'. "
+                             f"Set {store.upper()}_FLYER_URL to override."
+                }), 502
+
             print("Downloading PDF...")
-            pdf_path = download_pdf(SUPERMARKET_PDFS[store], filename=f"{store}.pdf")
+            pdf_path = download_pdf(flyer_url, filename=f"{store}.pdf")
 
             print("Extracting products...")
             products = extract_products_from_pdf(pdf_path)

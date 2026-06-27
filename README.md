@@ -30,6 +30,7 @@ backend         Flask + gunicorn  (deployed on Render)
 |------|------|
 | `mlx_server.py` | Flask app & HTTP entrypoint (see `Procfile`) |
 | `config.py` | `PARSER_MODE` / `RECIPE_MODE` (`cloud` default, `local` for Ollama) |
+| `flyer_sources.py` | Resolves each store's **current** flyer PDF URL dynamically |
 | `mercator_kimi_parser.py` | Flyer PDF → product list (Kimi cloud or local Gemma) |
 | `recipe_engine.py` | Discounted products → recipes (Kimi cloud or local Gemma) |
 | `local_parser.py` | Local Ollama Gemma parser (used when `PARSER_MODE=local`) |
@@ -67,6 +68,7 @@ Environment variables:
 | `MOONSHOT_MODEL` | `kimi-k2-turbo-preview` | Chat model for cloud parsing/recipes. Override if your key lacks the default (e.g. `moonshot-v1-128k`, `kimi-k2.5`) — check `GET /v1/models`. |
 | `PARSER_MODE` | `cloud` | `cloud` (Kimi) or `local` (Ollama Gemma) |
 | `RECIPE_MODE` | `cloud` | `cloud` (Kimi) or `local` (Ollama Gemma) |
+| `<STORE>_FLYER_URL` | — | Override the resolved flyer URL for a store, e.g. `LIDL_FLYER_URL`. Used as a fallback when a store has no working dynamic resolver. |
 
 `local` mode expects an Ollama server on `http://localhost:11434` with `gemma3:4b`.
 
@@ -98,9 +100,11 @@ Android/iOS (Capacitor) build steps.
 - Polished mobile UI, 6-language i18n, Capacitor mobile build config.
 
 **Known gaps / next steps**
-- Store coverage is limited to two chains with hardcoded, time-limited flyer URLs
-  (the Lidl PDF link in `mlx_server.py` expires weekly and currently 404s — it needs
-  to be refreshed or fetched dynamically).
+- Flyer URLs are resolved dynamically (`flyer_sources.py`): **Mercator** is fully
+  dynamic (its catalogs page lists the current PDF). **Lidl** uses the Schwarz
+  `leaflets.schwarz` platform, whose weekly PDF sits behind an undocumented API and
+  isn't a stable public link, so it currently falls back to the `LIDL_FLYER_URL`
+  override. Adding a new chain = adding a resolver to `flyer_sources.py`.
 - OpenStreetMap has no ratings/reviews/price level, and `opening_hours` parsing is
   best-effort, so those fields can be empty in the Restaurants UI.
 - No automated tests / CI yet.
