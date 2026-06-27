@@ -4,7 +4,12 @@ import type { Restaurant, CuisineType, OpeningHours } from '@/types';
 // Note: OSM has no ratings/reviews/price level, so those fields are left empty/unknown
 // and the UI degrades gracefully.
 
-const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+// Public Overpass instances. The main one intermittently rate-limits (returns an
+// HTML error page instead of JSON), so we fall back to a mirror.
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
 
 const DAY_ORDER = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const DAY_NAMES: Record<string, string> = {
@@ -210,27 +215,36 @@ export class RestaurantService {
   way["amenity"="restaurant"](around:${radiusM},${latitude},${longitude});
 );
 out center tags 60;`;
+    const body = `data=${encodeURIComponent(query)}`;
 
-    try {
-      const response = await fetch(OVERPASS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`,
-      });
-      if (!response.ok) throw new Error(`Overpass error: ${response.status}`);
+    // Try each endpoint until one returns parseable JSON (the public instances
+    // intermittently respond with an HTML rate-limit page).
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+        if (!response.ok) continue;
 
-      const data = await response.json();
-      const items: Restaurant[] = (data.elements as OverpassElement[])
-        .map((el) => elementToRestaurant(el, latitude, longitude))
-        .filter((r): r is Restaurant => r !== null)
-        .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+        const text = await response.text();
+        if (!text.trim().startsWith('{')) continue; // HTML error page, try next
 
-      this.cache.set(cacheKey, { items, timestamp: Date.now() });
-      return items;
-    } catch (error) {
-      console.error('Overpass restaurant fetch failed:', error);
-      return [];
+        const data = JSON.parse(text);
+        const items: Restaurant[] = (data.elements as OverpassElement[])
+          .map((el) => elementToRestaurant(el, latitude, longitude))
+          .filter((r): r is Restaurant => r !== null)
+          .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+
+        this.cache.set(cacheKey, { items, timestamp: Date.now() });
+        return items;
+      } catch (error) {
+        console.error(`Overpass fetch failed (${endpoint}):`, error);
+      }
     }
+
+    return [];
   }
 
   async getNearbyRestaurants(
@@ -245,7 +259,7 @@ out center tags 60;`;
       minRating?: number; // ignored: OSM has no ratings
     } = {}
   ): Promise<Restaurant[]> {
-    const { radius = 10, cuisineType, priceRange, openNow = false, deliveryOnly = false } = options;
+    const { radius = 3, cuisineType, priceRange, openNow = false, deliveryOnly = false } = options;
 
     let results = await this.fetchFromOverpass(latitude, longitude, radius);
 
@@ -282,7 +296,7 @@ out center tags 60;`;
     longitude: number,
     query: string
   ): Promise<Restaurant[]> {
-    const all = await this.fetchFromOverpass(latitude, longitude, 10);
+    const all = await this.fetchFromOverpass(latitude, longitude, 5);
     const lowerQuery = query.toLowerCase();
     return all.filter(
       (r) =>
@@ -301,7 +315,7 @@ out center tags 60;`;
     preferredCuisines: CuisineType[] = []
   ): Promise<Restaurant[]> {
     return this.getNearbyRestaurants(latitude, longitude, {
-      radius: 5,
+      radius: 2,
       cuisineType: preferredCuisines.length > 0 ? preferredCuisines : undefined,
       openNow: true,
     });
