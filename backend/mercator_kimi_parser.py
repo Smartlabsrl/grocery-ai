@@ -2,8 +2,11 @@ from config import PARSER_MODE, MOONSHOT_MODEL
 from local_parser import parse_with_gemma
 from openai import OpenAI
 from pathlib import Path
+import base64
 import json
 import os
+
+import requests
 
 
 MOONSHOT_API_KEY = os.getenv("MOONSHOT_API_KEY")
@@ -11,6 +14,18 @@ MOONSHOT_API_KEY = os.getenv("MOONSHOT_API_KEY")
 # Grocery deals live in the first pages of a flyer; large flyers (e.g. Lidl's
 # 66-page / 47 MB catalog) otherwise blow past the OCR/request timeout.
 FLYER_MAX_PAGES = int(os.getenv("FLYER_MAX_PAGES", "12"))
+
+# Vision model for image-based flyers (more accurate than file-extract OCR on
+# image-heavy leaflets like Hofer). Pages are sent in batches.
+VISION_MODEL = os.getenv("MOONSHOT_VISION_MODEL", "moonshot-v1-128k-vision-preview")
+VISION_BATCH_PAGES = int(os.getenv("VISION_BATCH_PAGES", "4"))
+
+_IMG_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+}
 
 client = OpenAI(
     api_key=MOONSHOT_API_KEY,   # ✅ 这里不要加引号
@@ -139,6 +154,60 @@ def _parse_products_json(raw):
     else:
         print("Cloud parser failed JSON.")
     return objects
+
+
+VISION_PROMPT = (
+    "These images are pages from a Slovenian supermarket flyer. "
+    "Extract EVERY food/grocery product that shows a discounted (action) price. "
+    "Read prices carefully and keep the decimal point: '3,99' or '3.99' -> 3.99, "
+    "never 399. discountPrice is the current/action price; normalPrice is the "
+    "crossed-out regular price (omit the item if there is no regular price). "
+    "Ignore non-food, alcohol, and loyalty-card-only offers.\n"
+    "Return ONLY a valid JSON array, no prose:\n"
+    '[{"name":"","discountPrice":0.0,"normalPrice":0.0,"unit":"kg or piece"}]'
+)
+
+
+def _img_to_data_url(src):
+    if str(src).startswith("http"):
+        data = requests.get(src, headers=_IMG_HEADERS, timeout=30).content
+    else:
+        with open(src, "rb") as f:
+            data = f.read()
+    return "data:image/jpeg;base64," + base64.b64encode(data).decode()
+
+
+def extract_products_from_images(image_sources):
+    """Extract products from flyer page images using the Moonshot vision model.
+    Pages are processed in batches to stay within context/output limits."""
+    products = []
+    for i in range(0, len(image_sources), VISION_BATCH_PAGES):
+        batch = image_sources[i:i + VISION_BATCH_PAGES]
+        content = [{"type": "text", "text": VISION_PROMPT}]
+        for src in batch:
+            try:
+                content.append({"type": "image_url", "image_url": {"url": _img_to_data_url(src)}})
+            except Exception as e:
+                print("Skipping image:", e)
+        if len(content) == 1:
+            continue
+        try:
+            completion = client.chat.completions.create(
+                model=VISION_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a strict JSON generator."},
+                    {"role": "user", "content": content},
+                ],
+                temperature=0,
+                max_tokens=4096,
+            )
+            raw = completion.choices[0].message.content or ""
+            products.extend(_parse_products_json(raw))
+        except Exception as e:
+            print(f"Vision batch {i // VISION_BATCH_PAGES} failed:", e)
+    print(f"Vision parser extracted {len(products)} products from {len(image_sources)} pages")
+    return products
+
 
 def clean_and_rank_products(products):
     # The parser prompt already restricts output to food, so we trust that and

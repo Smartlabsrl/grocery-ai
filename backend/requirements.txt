@@ -4,5 +4,4 @@ gunicorn
 requests
 pdfplumber
 pypdf
-pillow
 openai

@@ -8,9 +8,13 @@ import os
 
 from config import RECIPE_MODE
 from database import init_db, save_deals, get_latest_deals
-from mercator_kimi_parser import extract_products_from_pdf, clean_and_rank_products
+from mercator_kimi_parser import (
+    extract_products_from_pdf,
+    extract_products_from_images,
+    clean_and_rank_products,
+)
 from recipe_engine import generate_recipes
-from flyer_sources import STORES, list_stores, resolve_flyer_url
+from flyer_sources import STORES, list_stores, resolve_flyer_source
 
 app = Flask(__name__)
 CORS(app)
@@ -98,19 +102,22 @@ def supermarket_deals():
     # 3) real processing
     with lock:
         try:
-            print("Resolving current flyer URL...")
-            flyer_url = resolve_flyer_url(store)
-            if not flyer_url:
+            print("Resolving current flyer...")
+            source = resolve_flyer_source(store)
+            if not source:
                 return jsonify({
                     "error": f"Could not resolve a current flyer for '{store}'. "
                              f"Set {store.upper()}_FLYER_URL to override."
                 }), 502
 
-            print("Downloading PDF...")
-            pdf_path = download_pdf(flyer_url, filename=f"{store}.pdf")
-
-            print("Extracting products...")
-            products = extract_products_from_pdf(pdf_path)
+            if source["type"] == "images":
+                print(f"Extracting products from {len(source['urls'])} page images (vision)...")
+                products = extract_products_from_images(source["urls"])
+            else:
+                print("Downloading PDF...")
+                pdf_path = download_pdf(source["url"], filename=f"{store}.pdf")
+                print("Extracting products...")
+                products = extract_products_from_pdf(pdf_path)
 
             print("Ranking discounts...")
             ranked = clean_and_rank_products(products)

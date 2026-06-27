@@ -14,7 +14,6 @@ Resolution order for a store (see resolve_flyer_url):
   3. None  -> caller surfaces a clear "could not resolve flyer" error
 """
 
-import io
 import os
 import re
 import requests
@@ -39,13 +38,11 @@ def _get(url, **kwargs):
     return requests.get(url, headers=_HEADERS, timeout=30, **kwargs)
 
 
-def _mojletak_pdf(detail_path, store):
-    """Scrape a moj-letak.si catalog (served as page images) and assemble the
-    first FLYER_MAX_PAGES pages into a local PDF for OCR. Returns the local path,
-    or None on failure. Third-party source: best-effort and may break."""
+def _mojletak_images(detail_path, store):
+    """Scrape a moj-letak.si catalog (served as page images) and return the first
+    FLYER_MAX_PAGES full-resolution page image URLs. Third-party source:
+    best-effort and may break if the site changes."""
     try:
-        from PIL import Image
-
         resp = requests.get(f"{MOJLETAK_BASE}/{detail_path}",
                             headers={"User-Agent": _BROWSER_UA}, timeout=30)
         resp.raise_for_status()
@@ -66,16 +63,8 @@ def _mojletak_pdf(detail_path, store):
             print(f"No catalog page images found for {store} on moj-letak")
             return None
 
-        imgs = []
-        for u in pages[:FLYER_MAX_PAGES]:
-            ir = requests.get(u, headers={"User-Agent": _BROWSER_UA}, timeout=30)
-            ir.raise_for_status()
-            imgs.append(Image.open(io.BytesIO(ir.content)).convert("RGB"))
-
-        dest = os.path.abspath(f"{store}_src.pdf")
-        imgs[0].save(dest, "PDF", save_all=True, append_images=imgs[1:])
-        print(f"Built {store} flyer PDF from {len(imgs)} moj-letak pages")
-        return dest
+        print(f"Found {len(pages)} {store} pages on moj-letak (using first {FLYER_MAX_PAGES})")
+        return pages[:FLYER_MAX_PAGES]
     except Exception as e:
         print(f"moj-letak resolution failed for {store}: {e}")
         return None
@@ -141,16 +130,20 @@ def resolve_lidl():
 
 def resolve_spar():
     """Spar Slovenia. The official site (spar.si) bot-blocks server-side requests
-    (HTTP 403), so the current catalog is scraped from the moj-letak.si aggregator
-    and assembled into a PDF. SPAR_FLYER_URL overrides this."""
-    return _mojletak_pdf("spar-katalogi/spar-katalog", "spar")
+    (HTTP 403), so the current catalog page images are scraped from the
+    moj-letak.si aggregator and read with the vision model. SPAR_FLYER_URL
+    overrides this with a direct PDF."""
+    images = _mojletak_images("spar-katalogi/spar-katalog", "spar")
+    return {"type": "images", "urls": images} if images else None
 
 
 def resolve_hofer():
     """Hofer / Aldi Süd Slovenia. The official site (hofer.si) bot-blocks
-    server-side requests (HTTP 403), so the current leaflet is scraped from the
-    moj-letak.si aggregator. HOFER_FLYER_URL overrides this."""
-    return _mojletak_pdf("hofer-katalogi/hofer-katalog", "hofer")
+    server-side requests (HTTP 403), so the current leaflet page images are
+    scraped from moj-letak.si and read with the vision model. HOFER_FLYER_URL
+    overrides this with a direct PDF."""
+    images = _mojletak_images("hofer-katalogi/hofer-katalog", "hofer")
+    return {"type": "images", "urls": images} if images else None
 
 
 # store id -> (display name, resolver)
@@ -166,12 +159,17 @@ def list_stores():
     return [{"id": sid, "name": name} for sid, (name, _) in STORES.items()]
 
 
-def resolve_flyer_url(store):
-    """Return the current flyer PDF URL for a store, or None if unavailable."""
+def resolve_flyer_source(store):
+    """Resolve a store's current flyer to a source descriptor, or None.
+
+    Returns one of:
+      {"type": "pdf", "url": "<pdf url or local path>"}
+      {"type": "images", "urls": ["<page image url>", ...]}
+    """
     override = os.getenv(f"{store.upper()}_FLYER_URL")
     if override:
         print(f"Using {store.upper()}_FLYER_URL override")
-        return override
+        return {"type": "pdf", "url": override}
 
     entry = STORES.get(store)
     if not entry:
@@ -179,11 +177,22 @@ def resolve_flyer_url(store):
 
     _, resolver = entry
     try:
-        url = resolver()
-        if url:
-            print(f"Resolved {store} flyer: {url}")
-            return url
-        print(f"No flyer resolved for {store}")
+        result = resolver()
     except Exception as e:
         print(f"Flyer resolution failed for {store}: {e}")
-    return None
+        return None
+
+    if not result:
+        print(f"No flyer resolved for {store}")
+        return None
+
+    # Resolvers return either a plain PDF url/path or an image-source dict.
+    if isinstance(result, dict):
+        return result
+    return {"type": "pdf", "url": result}
+
+
+def resolve_flyer_url(store):
+    """Back-compat helper: the PDF URL for a store, or None."""
+    src = resolve_flyer_source(store)
+    return src.get("url") if src and src.get("type") == "pdf" else None
