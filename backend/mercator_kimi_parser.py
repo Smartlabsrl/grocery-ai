@@ -1,4 +1,4 @@
-from config import PARSER_MODE
+from config import PARSER_MODE, MOONSHOT_MODEL
 from local_parser import parse_with_gemma
 from openai import OpenAI
 from pathlib import Path
@@ -69,31 +69,46 @@ Return ONLY valid JSON array.
         ]
 
         completion = client.chat.completions.create(
-            model="kimi-k2-turbo-preview",
+            model=MOONSHOT_MODEL,
             messages=messages,
-            temperature=0
+            temperature=0,
+            max_tokens=8192,  # long product lists otherwise get truncated (finish_reason=length)
         )
 
-        raw = completion.choices[0].message.content
-
-        import re
-        match = re.search(r"\[.*\]", raw, re.DOTALL)
-
-        if not match:
-            print("Cloud parser failed JSON.")
-            return []
-
-        json_text = match.group(0)
-
-        try:
-            return json.loads(json_text)
-        except Exception as e:
-            print("Cloud JSON parse error:", e)
-            return []
+        raw = completion.choices[0].message.content or ""
+        return _parse_products_json(raw)
 
     else:
         print("Invalid PARSER_MODE")
         return []
+
+
+def _parse_products_json(raw):
+    """Parse a product JSON array, tolerating markdown fences and truncated output."""
+    import re
+
+    cleaned = raw.replace("```json", "").replace("```", "").strip()
+
+    match = re.search(r"\[.*\]", cleaned, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except Exception:
+            pass  # fall through to object-level salvage (e.g. truncated array)
+
+    # Salvage complete {...} objects when the array itself is malformed/truncated.
+    objects = []
+    for obj_match in re.finditer(r"\{[^{}]*\}", cleaned, re.DOTALL):
+        try:
+            objects.append(json.loads(obj_match.group(0)))
+        except Exception:
+            continue
+
+    if objects:
+        print(f"Recovered {len(objects)} products from partial JSON.")
+    else:
+        print("Cloud parser failed JSON.")
+    return objects
 
 def clean_and_rank_products(products):
 

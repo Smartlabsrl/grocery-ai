@@ -5,6 +5,8 @@ import json
 import requests
 from openai import OpenAI
 
+from config import MOONSHOT_MODEL
+
 
 RECIPE_PROMPT = """You are a strict JSON generator.
 
@@ -71,12 +73,13 @@ def generate_recipes_cloud(products):
     prompt = RECIPE_PROMPT.format(names=names)
 
     completion = _get_client().chat.completions.create(
-        model="kimi-k2-turbo-preview",
+        model=MOONSHOT_MODEL,
         messages=[
             {"role": "system", "content": "You are a strict JSON recipe generator. Return only a JSON array."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.3,
+        max_tokens=2048,
     )
 
     raw = completion.choices[0].message.content or ""

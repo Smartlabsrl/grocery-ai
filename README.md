@@ -64,6 +64,7 @@ Environment variables:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MOONSHOT_API_KEY` | — | Moonshot/Kimi API key (required for `cloud` mode) |
+| `MOONSHOT_MODEL` | `kimi-k2-turbo-preview` | Chat model for cloud parsing/recipes. Override if your key lacks the default (e.g. `moonshot-v1-128k`, `kimi-k2.5`) — check `GET /v1/models`. |
 | `PARSER_MODE` | `cloud` | `cloud` (Kimi) or `local` (Ollama Gemma) |
 | `RECIPE_MODE` | `cloud` | `cloud` (Kimi) or `local` (Ollama Gemma) |
 
@@ -97,7 +98,9 @@ Android/iOS (Capacitor) build steps.
 - Polished mobile UI, 6-language i18n, Capacitor mobile build config.
 
 **Known gaps / next steps**
-- Store coverage is limited to two chains with hardcoded flyer URLs.
+- Store coverage is limited to two chains with hardcoded, time-limited flyer URLs
+  (the Lidl PDF link in `mlx_server.py` expires weekly and currently 404s — it needs
+  to be refreshed or fetched dynamically).
 - OpenStreetMap has no ratings/reviews/price level, and `opening_hours` parsing is
   best-effort, so those fields can be empty in the Restaurants UI.
 - No automated tests / CI yet.

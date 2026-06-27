@@ -241,12 +241,29 @@ export function Home() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {dailyMenu.usedDiscountItems.map((item, idx) => (
-                  <Badge key={idx} variant="secondary" className="bg-green-50 text-green-700">
-                    {item.name}
-                    <span className="ml-1 text-green-500">-{item.discountPercentage}%</span>
-                  </Badge>
-                ))}
+                {dailyMenu.usedDiscountItems.map((item, idx) => {
+                  // Backend sends `discountPercent`/`normalPrice`; tolerate both shapes.
+                  const it = item as {
+                    discountPercentage?: number;
+                    discountPercent?: number;
+                    normalPrice?: number;
+                    discountPrice?: number;
+                  };
+                  const pct =
+                    it.discountPercentage ??
+                    it.discountPercent ??
+                    (it.normalPrice && it.discountPrice
+                      ? Math.round((1 - it.discountPrice / it.normalPrice) * 100)
+                      : null);
+                  return (
+                    <Badge key={idx} variant="secondary" className="bg-green-50 text-green-700">
+                      {item.name}
+                      {pct != null && (
+                        <span className="ml-1 text-green-500">-{Math.round(pct)}%</span>
+                      )}
+                    </Badge>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
