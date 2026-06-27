@@ -107,8 +107,11 @@ Android/iOS (Capacitor) build steps.
   `leaflets.schwarz` platform, whose weekly PDF sits behind an undocumented API and
   isn't a stable public link, but is fully resolved via that API. **Spar** and
   **Hofer** official sites bot-block server-side requests (HTTP 403, including from
-  datacenter/deployment IPs), so they have no automatic resolver yet and rely on the
-  `SPAR_FLYER_URL` / `HOFER_FLYER_URL` overrides. Adding a new chain = adding a
+  datacenter/deployment IPs), so their current flyer is scraped from the
+  third-party `moj-letak.si` aggregator (page images assembled into a PDF). This is
+  best-effort and may break if that site changes; both honor `SPAR_FLYER_URL` /
+  `HOFER_FLYER_URL` overrides. Spar parses cleanly; **Hofer's leaflet OCRs poorly**
+  (noisy prices), so its deals are lower quality. Adding a new chain = adding a
   resolver to `flyer_sources.py`.
 - OpenStreetMap has no ratings/reviews/price level, and `opening_hours` parsing is
   best-effort, so those fields can be empty in the Restaurants UI.

@@ -141,34 +141,18 @@ def _parse_products_json(raw):
     return objects
 
 def clean_and_rank_products(products):
-
-    FOOD_WHITELIST = [
-    # Slovenian
-    "losos", "file", "hobotnica",
-    "svinj", "piščan", "goved",
-    "sir", "mleko", "jogurt",
-    "maslo", "kruh", "riž",
-    "krompir", "čebul", "solat",
-    "paradiž", "paprik", "zelen",
-
-    # English
-    "salmon", "chicken", "beef",
-    "milk", "cheese", "bread",
-    "rice", "egg", "eggs",
-    "pasta", "oil", "potato",
-    "tomato"
-    ]
-
+    # The parser prompt already restricts output to food, so we trust that and
+    # only exclude obvious non-food / non-grocery items here (a whitelist was too
+    # narrow and dropped legitimate items from stores like Hofer).
     NON_FOOD_KEYWORDS = [
-        "cillit", "bang", "detergent",
-        "papir", "clean", "pijača",
-        "vino", "pivo", "chef noir"
+        "cillit", "bang", "detergent", "papir", "clean", "čistil",
+        "pijača", "vino", "pivo", "alkohol", "whisky", "žgan",
+        "šampon", "krema", "pralni", "toaletni",
     ]
 
-    filtered = []
+    best = {}
 
     for p in products:
-
         try:
             discount = p.get("discountPrice")
             normal = p.get("normalPrice")
@@ -187,23 +171,24 @@ def clean_and_rank_products(products):
             if discount_percent <= 0 or discount_percent >= 90:
                 continue
 
+            name = (p.get("name") or "").strip()
+            if not name:
+                continue
+
+            low = name.lower()
+            if any(word in low for word in NON_FOOD_KEYWORDS):
+                continue
+
+            # De-duplicate by name (OCR often repeats items), keep the best deal.
+            existing = best.get(low)
+            if existing and existing["discountPercent"] >= discount_percent:
+                continue
+
+            p["name"] = name
             p["discountPercent"] = discount_percent
+            best[low] = p
 
-            name = p["name"].lower()
-
-            # 白名单过滤
-            if not any(word in name for word in FOOD_WHITELIST):
-                continue
-
-            # 黑名单过滤
-            if any(word in name for word in NON_FOOD_KEYWORDS):
-                continue
-
-            filtered.append(p)
-
-        except:
+        except Exception:
             continue
 
-    filtered.sort(key=lambda x: x["discountPercent"], reverse=True)
-
-    return filtered
+    return sorted(best.values(), key=lambda x: x["discountPercent"], reverse=True)
