@@ -7,7 +7,8 @@
     "home": "首页",
     "deals": "优惠",
     "dining": "餐厅",
-    "settings": "设置"
+    "settings": "设置",
+    "near": "附近"
   },
   "home": {
     "title": "今日菜单",
@@ -64,7 +65,10 @@
       "grains": "谷物",
       "snacks": "零食",
       "beverages": "饮料"
-    }
+    },
+    "noDeals": "暂无可用优惠。",
+    "loadError": "加载超市优惠失败。",
+    "dealsAvailable": "个优惠"
   },
   "restaurant": {
     "title": "餐厅",
@@ -182,12 +186,5 @@
     "close": "关闭",
     "yes": "是",
     "no": "否"
-  },
-  "nav": {
-    "home": "首页",
-    "deals": "优惠",
-    "dining": "餐厅",
-    "settings": "设置",
-    "near": "附近"
   }
 }

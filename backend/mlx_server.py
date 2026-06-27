@@ -6,9 +6,10 @@ import threading
 import time
 import os
 
+from config import RECIPE_MODE
 from database import init_db, save_deals, get_latest_deals
 from mercator_kimi_parser import extract_products_from_pdf, clean_and_rank_products
-from recipe_engine import generate_recipes_local
+from recipe_engine import generate_recipes
 
 app = Flask(__name__)
 CORS(app)
@@ -18,8 +19,6 @@ lock = threading.Lock()
 cache_data = {}
 cache_time = {}
 CACHE_DURATION = 600  # 10 minutes
-
-RECIPE_MODE = "local"
 
 SUPERMARKET_PDFS = {
     "mercator": "https://www.mercator.si/assets/Katalogi/2026-02-19-Redni-katalog-200x288mm-web3.pdf",
@@ -110,10 +109,11 @@ def supermarket_deals():
             ranked = clean_and_rank_products(products)
             top_products = ranked[:5]
 
-            print("Generating recipes...")
-            if RECIPE_MODE == "local":
-                raw_recipes = generate_recipes_local(top_products[:3])
-            else:
+            print(f"Generating recipes ({RECIPE_MODE})...")
+            try:
+                raw_recipes = generate_recipes(top_products[:3], mode=RECIPE_MODE)
+            except Exception as recipe_err:
+                print("Recipe generation failed:", recipe_err)
                 raw_recipes = []
 
             structured_response = {

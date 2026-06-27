@@ -1,0 +1,39 @@
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Vite / Capacitor ----
+.vite/
+frontend/app/android/app/build/
+frontend/app/ios/App/Pods/
+
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- App data / artifacts (regenerated at runtime) ----
+*.db
+backend/*.pdf
+backend/*_raw.txt
+
+# ---- Secrets ----
+.env
+.env.*
+!.env.example

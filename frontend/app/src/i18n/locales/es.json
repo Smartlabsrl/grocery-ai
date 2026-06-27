@@ -60,7 +60,10 @@
       "grains": "Granos",
       "snacks": "Snacks",
       "beverages": "Bebidas"
-    }
+    },
+    "noDeals": "No hay ofertas disponibles en este momento.",
+    "loadError": "No se pudieron cargar las ofertas.",
+    "dealsAvailable": "ofertas disponibles"
   },
   "restaurant": {
     "title": "Restaurantes",

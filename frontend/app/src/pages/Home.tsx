@@ -25,7 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppStore } from '@/store/useAppStore';
 import { useLocation } from '@/hooks/useLocation';
-import type { Recipe } from '@/types';
+import { getSupermarketDeals } from '@/services/api';
+import type { Recipe, DailyMenu } from '@/types';
 
 export function Home() {
   const { t } = useTranslation();
@@ -50,18 +51,10 @@ export function Home() {
     setIsGenerating(true);
   
     try {
-      const url = force
-      ? "https://grocery-ai-backend-kli0.onrender.com/supermarket-deals?store=lidl&refresh=true"
-      : "https://grocery-ai-backend-kli0.onrender.com/supermarket-deals?store=lidl";
-  
-      const res = await fetch(url);
-  
-      if (!res.ok) throw new Error("Backend error");
-  
-      const data = await res.json();
-  
-      setDailyMenu(data);
-  
+      const data = await getSupermarketDeals('lidl', force);
+
+      setDailyMenu(data as unknown as DailyMenu);
+
     } catch (err) {
       console.error("Failed to load weekly savings plan:", err);
       setError("Failed to load real supermarket deals.");

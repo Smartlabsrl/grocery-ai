@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  ChevronLeft, 
-  Store, 
+import {
+  ChevronLeft,
+  Store,
   Search,
   TrendingDown,
   Clock,
   ShoppingCart,
-  Navigation,
-  ExternalLink
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +16,15 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppStore } from '@/store/useAppStore';
-import { getSupermarketScraperService } from '@/services/supermarketScraper';
-import type { DiscountItem, FoodCategory, Supermarket } from '@/types';
+import {
+  getNearbySupermarkets,
+  getSupermarketDeals,
+  mapDealsToDiscountItems,
+  type BackendStore,
+} from '@/services/api';
+import type { DiscountItem, FoodCategory } from '@/types';
 
 const CATEGORY_ICONS: Record<FoodCategory, string> = {
   vegetables: '🥬',
@@ -34,45 +40,67 @@ const CATEGORY_ICONS: Record<FoodCategory, string> = {
 export function SupermarketPage() {
   const { t } = useTranslation();
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
-  const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
+  const [stores, setStores] = useState<BackendStore[]>([]);
+  const [dealCounts, setDealCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FoodCategory | null>(null);
   const [activeTab, setActiveTab] = useState('deals');
-  
+
   const { selectedAddress } = useAppStore();
-  const scraperService = getSupermarketScraperService();
+
+  const loadData = async (refresh = false) => {
+    if (refresh) setIsRefreshing(true);
+    else setIsLoading(true);
+    setError(null);
+
+    try {
+      const backendStores = await getNearbySupermarkets();
+      setStores(backendStores);
+
+      const allDiscounts: DiscountItem[] = [];
+      const counts: Record<string, number> = {};
+
+      // Fetch each store's parsed flyer deals from the backend.
+      const results = await Promise.all(
+        backendStores.map(async (store) => {
+          try {
+            const data = await getSupermarketDeals(store.id, refresh);
+            return mapDealsToDiscountItems(store.id, store.name, data.usedDiscountItems || []);
+          } catch (err) {
+            console.error(`Failed to load deals for ${store.id}:`, err);
+            return [] as DiscountItem[];
+          }
+        })
+      );
+
+      backendStores.forEach((store, i) => {
+        counts[store.id] = results[i].length;
+        allDiscounts.push(...results[i]);
+      });
+
+      allDiscounts.sort((a, b) => b.discountPercentage - a.discountPercentage);
+      setDiscountItems(allDiscounts);
+      setDealCounts(counts);
+
+      if (allDiscounts.length === 0) {
+        setError(t('supermarket.noDeals') || 'No deals available right now.');
+      }
+    } catch (err) {
+      console.error('Failed to load supermarket data:', err);
+      setError(t('supermarket.loadError') || 'Failed to load supermarket deals.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      
-      if (selectedAddress) {
-        // Load supermarkets for location
-        const markets = await scraperService.getSupermarketsForLocation(
-          selectedAddress.latitude,
-          selectedAddress.longitude,
-          10
-        );
-        setSupermarkets(markets);
-        
-        // Load discounts from all supermarkets
-        const allDiscounts: DiscountItem[] = [];
-        for (const market of markets.slice(0, 3)) {
-          const discounts = await scraperService.scrapeDiscounts(market);
-          allDiscounts.push(...discounts);
-        }
-        
-        // Sort by discount percentage
-        allDiscounts.sort((a, b) => b.discountPercentage - a.discountPercentage);
-        setDiscountItems(allDiscounts);
-      }
-      
-      setIsLoading(false);
-    };
-    
     loadData();
-  }, [selectedAddress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredItems = discountItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -108,12 +136,28 @@ export function SupermarketPage() {
                 {selectedAddress ? `${t('nav.near')} ${selectedAddress.name}` : t('settings.location')}
               </p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={isLoading || isRefreshing}
+              onClick={() => loadData(true)}
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-lg mx-auto px-4 py-4">
+        {/* Error */}
+        {error && !isLoading && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Search */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -221,19 +265,20 @@ export function SupermarketPage() {
           <TabsContent value="stores" className="space-y-4">
             {isLoading ? (
               Array(3).fill(0).map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
+                <Skeleton key={i} className="h-24 w-full" />
               ))
-            ) : supermarkets.length > 0 ? (
-              supermarkets.map((market) => (
-                <SupermarketCard key={market.id} market={market} />
+            ) : stores.length > 0 ? (
+              stores.map((store) => (
+                <StoreCard
+                  key={store.id}
+                  store={store}
+                  dealCount={dealCounts[store.id] ?? 0}
+                />
               ))
             ) : (
               <div className="text-center py-8">
                 <Store className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No supermarkets found nearby</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Set your location to see nearby stores
-                </p>
+                <p className="text-gray-500">No supermarkets available</p>
               </div>
             )}
           </TabsContent>
@@ -284,37 +329,29 @@ function DiscountCard({ item }: { item: DiscountItem }) {
   );
 }
 
-// Supermarket Card Component
-function SupermarketCard({ market }: { market: Supermarket }) {
+// Store Card Component (backed by /nearby-supermarkets)
+function StoreCard({ store, dealCount }: { store: BackendStore; dealCount: number }) {
   const { t } = useTranslation();
-  const scraperService = getSupermarketScraperService();
-  const flyerUrl = scraperService.getFlyerUrl(market);
 
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-semibold text-gray-900">{market.name}</h3>
-            <p className="text-sm text-gray-500">{market.address}</p>
-            <div className="flex items-center gap-3 mt-2">
-              <Badge variant="secondary" className="text-xs">
-                <Navigation className="w-3 h-3 mr-1" />
-                {market.distance?.toFixed(1)} km
-              </Badge>
-              <span className="text-xs text-gray-500 capitalize">
-                {market.chain}
-              </span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
+              <Store className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">{store.name}</h3>
+              <p className="text-sm text-gray-500">
+                {dealCount} {t('supermarket.dealsAvailable') || 'deals available'}
+              </p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.open(flyerUrl, '_blank')}
-          >
-            <ExternalLink className="w-3 h-3 mr-1" />
-            {t('supermarket.viewFlyer')}
-          </Button>
+          <Badge variant="secondary" className="text-xs">
+            <TrendingDown className="w-3 h-3 mr-1" />
+            {dealCount}
+          </Badge>
         </div>
       </CardContent>
     </Card>

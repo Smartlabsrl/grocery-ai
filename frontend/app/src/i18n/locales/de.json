@@ -60,7 +60,10 @@
       "grains": "Getreide",
       "snacks": "Snacks",
       "beverages": "Getränke"
-    }
+    },
+    "noDeals": "Derzeit keine Angebote verfügbar.",
+    "loadError": "Angebote konnten nicht geladen werden.",
+    "dealsAvailable": "Angebote verfügbar"
   },
   "restaurant": {
     "title": "Restaurants",

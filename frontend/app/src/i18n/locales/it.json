@@ -60,7 +60,10 @@
       "grains": "Cereali",
       "snacks": "Snack",
       "beverages": "Bevande"
-    }
+    },
+    "noDeals": "Nessuna offerta disponibile al momento.",
+    "loadError": "Impossibile caricare le offerte.",
+    "dealsAvailable": "offerte disponibili"
   },
   "restaurant": {
     "title": "Ristoranti",
