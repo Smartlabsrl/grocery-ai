@@ -8,7 +8,8 @@ import {
   Clock,
   ShoppingCart,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Navigation
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +58,10 @@ export function SupermarketPage() {
     setError(null);
 
     try {
-      const backendStores = await getNearbySupermarkets();
+      const backendStores = await getNearbySupermarkets(
+        selectedAddress?.latitude,
+        selectedAddress?.longitude
+      );
       setStores(backendStores);
 
       const allDiscounts: DiscountItem[] = [];
@@ -100,7 +104,7 @@ export function SupermarketPage() {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedAddress]);
 
   const filteredItems = discountItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -278,7 +282,11 @@ export function SupermarketPage() {
             ) : (
               <div className="text-center py-8">
                 <Store className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No supermarkets available</p>
+                <p className="text-gray-500">
+                  {selectedAddress
+                    ? t('supermarket.notCovered') || 'No supported supermarkets in your area yet.'
+                    : t('settings.location')}
+                </p>
               </div>
             )}
           </TabsContent>
@@ -343,9 +351,21 @@ function StoreCard({ store, dealCount }: { store: BackendStore; dealCount: numbe
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">{store.name}</h3>
-              <p className="text-sm text-gray-500">
-                {dealCount} {t('supermarket.dealsAvailable') || 'deals available'}
-              </p>
+              {store.distance != null ? (
+                <p className="text-sm text-gray-500 flex items-center gap-1">
+                  <Navigation className="w-3 h-3" />
+                  {store.distance} km · {store.branch || store.name}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {dealCount} {t('supermarket.dealsAvailable') || 'deals available'}
+                </p>
+              )}
+              {store.distance != null && (
+                <p className="text-xs text-gray-400">
+                  {dealCount} {t('supermarket.dealsAvailable') || 'deals available'}
+                </p>
+              )}
             </div>
           </div>
           <Badge variant="secondary" className="text-xs">

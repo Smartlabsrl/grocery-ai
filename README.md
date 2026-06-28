@@ -95,9 +95,14 @@ Android/iOS (Capacitor) build steps.
 
 **Working**
 - Flyer → deals → recipes pipeline (cloud LLM). Stores: **Lidl** and **Mercator**
-  resolve their current flyer fully dynamically; **Spar** and **Hofer** are wired
-  into the framework but need a flyer-URL override (see below).
-- Home page and Supermarket page render real backend data.
+  resolve their current flyer fully dynamically; **Spar** and **Hofer** are scraped
+  from a third-party aggregator and read with a vision model (see below).
+- **Location-aware stores**: `/nearby-supermarkets?lat=&lon=` reverse-geocodes the
+  user's country, returns only chains that operate there (empty if uncovered), and
+  attaches the nearest physical branch + distance (best-effort via OSM). Home picks
+  the nearest store for the daily menu instead of a hardcoded one.
+- **Per-dish cost & savings**: each recipe lists ingredients (on-sale highlighted),
+  an estimated cost, and how much you save vs. normal prices.
 - Restaurants page uses real **OpenStreetMap** (Overpass API) data — free, no API key.
 - Polished mobile UI, 6-language i18n, Capacitor mobile build config.
 
@@ -107,12 +112,14 @@ Android/iOS (Capacitor) build steps.
   `leaflets.schwarz` platform, whose weekly PDF sits behind an undocumented API and
   isn't a stable public link, but is fully resolved via that API. **Spar** and
   **Hofer** official sites bot-block server-side requests (HTTP 403, including from
-  datacenter/deployment IPs), so their current flyer is scraped from the
-  third-party `moj-letak.si` aggregator (page images assembled into a PDF). This is
-  best-effort and may break if that site changes; both honor `SPAR_FLYER_URL` /
-  `HOFER_FLYER_URL` overrides. Spar parses cleanly; **Hofer's leaflet OCRs poorly**
-  (noisy prices), so its deals are lower quality. Adding a new chain = adding a
-  resolver to `flyer_sources.py`.
+  datacenter/deployment IPs), so their current flyer page images are scraped from the
+  third-party `moj-letak.si` aggregator and read with the Moonshot **vision model**.
+  This is best-effort and may break if that site changes; both honor `SPAR_FLYER_URL`
+  / `HOFER_FLYER_URL` overrides. Adding a new chain = adding a resolver to
+  `flyer_sources.py` (and its country coverage in `STORES`).
+- Store coverage is currently Slovenia only; other countries return no stores until
+  their chains + resolvers are added. Nearest-branch distance depends on public
+  Overpass availability (best-effort).
 - OpenStreetMap has no ratings/reviews/price level, and `opening_hours` parsing is
   best-effort, so those fields can be empty in the Restaurants UI.
 - No automated tests / CI yet.

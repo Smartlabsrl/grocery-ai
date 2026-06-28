@@ -40,7 +40,8 @@
     "easy": "Facile",
     "medium": "Moyen",
     "hard": "Difficile",
-    "save": "Économisez"
+    "save": "Économisez",
+    "noStoreNearby": "Aucun supermarché pris en charge près de chez vous pour l'instant."
   },
   "supermarket": {
     "title": "Promotions Supermarché",
@@ -64,7 +65,8 @@
     },
     "noDeals": "Aucune offre disponible pour le moment.",
     "loadError": "Échec du chargement des offres.",
-    "dealsAvailable": "offres disponibles"
+    "dealsAvailable": "offres disponibles",
+    "notCovered": "Aucun supermarché pris en charge dans votre région pour l'instant."
   },
   "restaurant": {
     "title": "Restaurants",

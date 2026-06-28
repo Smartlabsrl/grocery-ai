@@ -40,7 +40,8 @@
     "easy": "简单",
     "medium": "中等",
     "hard": "困难",
-    "save": "省"
+    "save": "省",
+    "noStoreNearby": "附近暂无支持的超市。"
   },
   "noCook": {
     "title": "不想做饭？",
@@ -69,7 +70,8 @@
     },
     "noDeals": "暂无可用优惠。",
     "loadError": "加载超市优惠失败。",
-    "dealsAvailable": "个优惠"
+    "dealsAvailable": "个优惠",
+    "notCovered": "你所在区域暂无支持的超市。"
   },
   "restaurant": {
     "title": "餐厅",

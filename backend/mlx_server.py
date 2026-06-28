@@ -14,7 +14,7 @@ from mercator_kimi_parser import (
     clean_and_rank_products,
 )
 from recipe_engine import generate_recipes
-from flyer_sources import STORES, list_stores, resolve_flyer_source
+from flyer_sources import STORES, list_stores, nearby_stores, resolve_flyer_source
 
 app = Flask(__name__)
 CORS(app)
@@ -91,6 +91,14 @@ def health():
 
 @app.route("/nearby-supermarkets")
 def nearby_supermarkets():
+    lat = request.args.get("lat")
+    lon = request.args.get("lon")
+    if lat and lon:
+        try:
+            return jsonify(nearby_stores(float(lat), float(lon)))
+        except ValueError:
+            return jsonify({"error": "Invalid lat/lon"}), 400
+    # No location -> all supported stores (back-compat)
     return jsonify(list_stores())
 
 

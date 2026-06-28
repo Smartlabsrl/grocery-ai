@@ -40,7 +40,8 @@
     "easy": "Easy",
     "medium": "Medium",
     "hard": "Hard",
-    "save": "Save"
+    "save": "Save",
+    "noStoreNearby": "No supported supermarket near you yet."
   },
   "noCook": {
     "title": "Don't Feel Like Cooking?",
@@ -69,7 +70,8 @@
     },
     "noDeals": "No deals available right now.",
     "loadError": "Failed to load supermarket deals.",
-    "dealsAvailable": "deals available"
+    "dealsAvailable": "deals available",
+    "notCovered": "No supported supermarkets in your area yet."
   },
   "restaurant": {
     "title": "Restaurants",

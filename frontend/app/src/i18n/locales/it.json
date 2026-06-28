@@ -40,7 +40,8 @@
     "easy": "Facile",
     "medium": "Medio",
     "hard": "Difficile",
-    "save": "Risparmia"
+    "save": "Risparmia",
+    "noStoreNearby": "Nessun supermercato supportato vicino a te per ora."
   },
   "supermarket": {
     "title": "Offerte Supermercato",
@@ -64,7 +65,8 @@
     },
     "noDeals": "Nessuna offerta disponibile al momento.",
     "loadError": "Impossibile caricare le offerte.",
-    "dealsAvailable": "offerte disponibili"
+    "dealsAvailable": "offerte disponibili",
+    "notCovered": "Nessun supermercato supportato nella tua zona per ora."
   },
   "restaurant": {
     "title": "Ristoranti",

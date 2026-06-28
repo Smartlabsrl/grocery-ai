@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppStore } from '@/store/useAppStore';
 import { useLocation } from '@/hooks/useLocation';
-import { getSupermarketDeals } from '@/services/api';
+import { getSupermarketDeals, getNearbySupermarkets } from '@/services/api';
 import type { Recipe, DailyMenu } from '@/types';
 
 export function Home() {
@@ -53,8 +53,17 @@ export function Home() {
     setIsGenerating(true);
   
     try {
-      const data = await getSupermarketDeals('lidl', force);
+      // Pick the supermarket nearest to the user (location-aware), not a fixed store.
+      const stores = await getNearbySupermarkets(
+        selectedAddress?.latitude,
+        selectedAddress?.longitude
+      );
+      if (!stores.length) {
+        setError(t('home.noStoreNearby') || 'No supported supermarket near you yet.');
+        return;
+      }
 
+      const data = await getSupermarketDeals(stores[0].id, force);
       setDailyMenu(data as unknown as DailyMenu);
 
     } catch (err) {

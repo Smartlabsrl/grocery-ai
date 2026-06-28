@@ -146,17 +146,19 @@ def resolve_hofer():
     return {"type": "images", "urls": images} if images else None
 
 
-# store id -> (display name, resolver)
+# store id -> metadata. `countries` = ISO-3166 alpha-2 codes the chain serves
+# (used to gate by the user's location). `brand` is matched against OSM tags to
+# find the nearest physical branch.
 STORES = {
-    "mercator": ("Mercator", resolve_mercator),
-    "spar": ("Spar", resolve_spar),
-    "hofer": ("Hofer", resolve_hofer),
-    "lidl": ("Lidl", resolve_lidl),
+    "mercator": {"name": "Mercator", "resolver": resolve_mercator, "countries": {"si"}, "brand": "Mercator"},
+    "spar": {"name": "Spar", "resolver": resolve_spar, "countries": {"si"}, "brand": "Spar"},
+    "hofer": {"name": "Hofer", "resolver": resolve_hofer, "countries": {"si"}, "brand": "Hofer"},
+    "lidl": {"name": "Lidl", "resolver": resolve_lidl, "countries": {"si"}, "brand": "Lidl"},
 }
 
 
 def list_stores():
-    return [{"id": sid, "name": name} for sid, (name, _) in STORES.items()]
+    return [{"id": sid, "name": meta["name"]} for sid, meta in STORES.items()]
 
 
 def resolve_flyer_source(store):
@@ -175,7 +177,7 @@ def resolve_flyer_source(store):
     if not entry:
         return None
 
-    _, resolver = entry
+    resolver = entry["resolver"]
     try:
         result = resolver()
     except Exception as e:
@@ -196,3 +198,123 @@ def resolve_flyer_url(store):
     """Back-compat helper: the PDF URL for a store, or None."""
     src = resolve_flyer_source(store)
     return src.get("url") if src and src.get("type") == "pdf" else None
+
+
+# =============================
+# LOCATION -> NEARBY STORES
+# =============================
+
+OVERPASS_ENDPOINTS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    import math
+    r = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
+    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def country_for(lat, lon):
+    """Reverse-geocode coordinates to an ISO-3166 alpha-2 country code (lowercase)."""
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"format": "json", "lat": lat, "lon": lon, "zoom": 5},
+            headers={"User-Agent": _BROWSER_UA, "Accept-Language": "en"},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return (resp.json().get("address", {}).get("country_code") or "").lower()
+    except Exception as e:
+        print("Reverse geocode failed:", e)
+        return ""
+
+
+def _nearest_branches(lat, lon, brands, radius_m=20000):
+    """One Overpass query for all brands near the user; returns the nearest branch
+    per brand: {brand_lower: {"branch","distance","address"}}."""
+    if not brands:
+        return {}
+    pattern = "|".join(re.escape(b) for b in brands)
+    query = f"""[out:json][timeout:25];
+(
+  node["shop"~"supermarket|convenience"]["name"~"{pattern}",i](around:{radius_m},{lat},{lon});
+  way["shop"~"supermarket|convenience"]["name"~"{pattern}",i](around:{radius_m},{lat},{lon});
+);
+out center tags 200;"""
+    body = "data=" + requests.utils.quote(query)
+
+    for endpoint in OVERPASS_ENDPOINTS:
+        try:
+            # Short timeout: branch distance is a best-effort enhancement; the
+            # public Overpass instances are flaky and must never hang the request.
+            resp = requests.post(endpoint, data=body,
+                                 headers={"Content-Type": "application/x-www-form-urlencoded",
+                                          "User-Agent": _BROWSER_UA}, timeout=12)
+            if not resp.ok or not resp.text.strip().startswith("{"):
+                continue
+
+            nearest = {}
+            for el in resp.json().get("elements", []):
+                tags = el.get("tags", {})
+                name = tags.get("name", "")
+                blat = el.get("lat") or (el.get("center") or {}).get("lat")
+                blon = el.get("lon") or (el.get("center") or {}).get("lon")
+                if not name or blat is None or blon is None:
+                    continue
+                low = name.lower()
+                brand = next((b for b in brands if b.lower() in low), None)
+                if not brand:
+                    continue
+                dist = _haversine_km(lat, lon, blat, blon)
+                cur = nearest.get(brand.lower())
+                if cur is None or dist < cur["distance"]:
+                    addr = " ".join(filter(None, [
+                        tags.get("addr:street", ""), tags.get("addr:housenumber", ""),
+                        tags.get("addr:city", "")])).strip()
+                    nearest[brand.lower()] = {"branch": name, "distance": round(dist, 1),
+                                              "address": addr}
+            return nearest
+        except Exception as e:
+            print(f"Overpass branch lookup failed ({endpoint}):", e)
+    return {}
+
+
+_nearby_cache = {}
+_NEARBY_TTL = 60 * 60  # 1 hour
+
+
+def nearby_stores(lat, lon):
+    """Stores available at the user's location, with the nearest branch + distance.
+    Empty list if the user's country isn't covered yet."""
+    import time
+    key = (round(lat, 2), round(lon, 2))
+    cached = _nearby_cache.get(key)
+    if cached and time.time() - cached[0] < _NEARBY_TTL:
+        return cached[1]
+
+    country = country_for(lat, lon)
+    print(f"Resolved location -> country '{country}'")
+
+    covered = {sid: meta for sid, meta in STORES.items()
+               if not country or country in meta["countries"]}
+    branches = _nearest_branches(lat, lon, [m["brand"] for m in covered.values()])
+
+    results = []
+    for sid, meta in covered.items():
+        entry = {"id": sid, "name": meta["name"]}
+        branch = branches.get(meta["brand"].lower())
+        if branch:
+            entry.update(branch)
+        results.append(entry)
+
+    # Nearest first; chains with no located branch sink to the bottom.
+    results.sort(key=lambda s: s.get("distance", float("inf")))
+    _nearby_cache[key] = (time.time(), results)
+    return results

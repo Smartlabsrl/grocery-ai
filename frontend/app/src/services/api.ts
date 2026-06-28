@@ -8,6 +8,9 @@ export const API_BASE =
 export interface BackendStore {
   id: string;
   name: string;
+  distance?: number; // km to nearest branch (when location is known)
+  branch?: string;   // nearest branch name
+  address?: string;
 }
 
 export interface BackendDealItem {
@@ -25,9 +28,17 @@ export interface SupermarketDealsResponse {
   usedDiscountItems: BackendDealItem[];
 }
 
-/** Stores the backend can currently parse flyers for. */
-export async function getNearbySupermarkets(): Promise<BackendStore[]> {
-  const res = await fetch(`${API_BASE}/nearby-supermarkets`);
+/** Supported supermarkets near the user. With coordinates, results are gated to
+ *  the user's country and include the nearest branch + distance. */
+export async function getNearbySupermarkets(
+  latitude?: number,
+  longitude?: number
+): Promise<BackendStore[]> {
+  const q =
+    latitude != null && longitude != null
+      ? `?lat=${latitude}&lon=${longitude}`
+      : '';
+  const res = await fetch(`${API_BASE}/nearby-supermarkets${q}`);
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
