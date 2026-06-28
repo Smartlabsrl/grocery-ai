@@ -8,19 +8,29 @@ from openai import OpenAI
 from config import MOONSHOT_MODEL
 
 
+SERVINGS = 2
+
 RECIPE_PROMPT = """You are a strict JSON generator.
 
-Create 3 simple budget recipes using ONLY these discounted ingredients:
+Create 3 simple budget recipes that mainly use these DISCOUNTED supermarket items
+(prices are in EUR):
 
-{names}
+{items}
+
+For each recipe:
+- Build it around the discounted items above; you may add a few cheap pantry
+  staples (salt, oil, spices, water, flour).
+- List ingredients with realistic amounts for {servings} servings.
+- For every ingredient set "onSale" true/false and "price" = the approximate EUR
+  cost of the amount used (use the discounted price for on-sale items).
+- "estimatedCost" = approximate total EUR to cook the dish for {servings} servings.
+- "estimatedSavings" = approximate EUR saved versus buying the on-sale ingredients
+  at their normal (pre-discount) price.
 
 Rules:
-- Only food
-- No alcohol-based recipes
-- No cleaning products
-- Do not invent new ingredients
-- Return ONLY valid JSON array
-- No explanation text
+- Food only. No alcohol, no cleaning products.
+- Use dot decimals (e.g. 3.99), not commas.
+- Return ONLY a valid JSON array. No explanation text.
 
 Format:
 
@@ -28,10 +38,25 @@ Format:
   {{
     "title": "",
     "description": "",
-    "savingsIdea": ""
+    "ingredients": [
+      {{"name": "", "amount": "", "onSale": true, "price": 0.0}}
+    ],
+    "estimatedCost": 0.0,
+    "estimatedSavings": 0.0
   }}
 ]
 """
+
+
+def _format_items(products):
+    lines = []
+    for p in products:
+        name = p.get("name", "")
+        dp = p.get("discountPrice")
+        np = p.get("normalPrice")
+        unit = p.get("unit") or "piece"
+        lines.append(f"- {name}: €{dp} (normal €{np}) per {unit}")
+    return "\n".join(lines)
 
 
 def _extract_json_array(raw):
@@ -69,8 +94,7 @@ def generate_recipes_cloud(products):
     if not products:
         return []
 
-    names = ", ".join([p.get("name", "") for p in products])
-    prompt = RECIPE_PROMPT.format(names=names)
+    prompt = RECIPE_PROMPT.format(items=_format_items(products), servings=SERVINGS)
 
     completion = _get_client().chat.completions.create(
         model=MOONSHOT_MODEL,
@@ -79,7 +103,7 @@ def generate_recipes_cloud(products):
             {"role": "user", "content": prompt},
         ],
         temperature=0.3,
-        max_tokens=2048,
+        max_tokens=3072,
     )
 
     raw = completion.choices[0].message.content or ""
@@ -98,8 +122,7 @@ def generate_recipes_local(products):
     if not products:
         return []
 
-    names = ", ".join([p.get("name", "") for p in products])
-    prompt = RECIPE_PROMPT.format(names=names)
+    prompt = RECIPE_PROMPT.format(items=_format_items(products), servings=SERVINGS)
 
     response = requests.post(
         "http://localhost:11434/api/generate",

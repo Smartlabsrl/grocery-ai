@@ -39,7 +39,8 @@
     "difficulty": "难度",
     "easy": "简单",
     "medium": "中等",
-    "hard": "困难"
+    "hard": "困难",
+    "save": "省"
   },
   "noCook": {
     "title": "不想做饭？",

@@ -39,7 +39,8 @@
     "difficulty": "Difficulty",
     "easy": "Easy",
     "medium": "Medium",
-    "hard": "Hard"
+    "hard": "Hard",
+    "save": "Save"
   },
   "noCook": {
     "title": "Don't Feel Like Cooking?",

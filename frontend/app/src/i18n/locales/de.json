@@ -39,7 +39,8 @@
     "difficulty": "Schwierigkeit",
     "easy": "Einfach",
     "medium": "Mittel",
-    "hard": "Schwer"
+    "hard": "Schwer",
+    "save": "Spare"
   },
   "supermarket": {
     "title": "Supermarkt-Angebote",

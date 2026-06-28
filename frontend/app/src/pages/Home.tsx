@@ -15,7 +15,9 @@ import {
   Sparkles,
   Store,
   Navigation,
-  AlertCircle
+  AlertCircle,
+  Wallet,
+  PiggyBank
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -278,6 +280,31 @@ export function Home() {
   );
 }
 
+// Cost & savings strip — the core "save money" payoff for a dish
+function CostSavings({ recipe }: { recipe: Recipe }) {
+  const { t } = useTranslation();
+  const cost = recipe.estimatedCost;
+  const savings = recipe.estimatedSavings;
+  if (cost == null && savings == null) return null;
+
+  return (
+    <div className="flex items-center gap-2 mt-3 flex-wrap">
+      {cost != null && (
+        <Badge variant="secondary" className="text-sm bg-gray-100 text-gray-800">
+          <Wallet className="w-3.5 h-3.5 mr-1" />
+          ~€{cost.toFixed(2)} · {recipe.servings} {t('home.servings')}
+        </Badge>
+      )}
+      {savings != null && savings > 0 && (
+        <Badge className="text-sm bg-green-500 text-white">
+          <PiggyBank className="w-3.5 h-3.5 mr-1" />
+          {t('home.save')} €{savings.toFixed(2)}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 // Recipe Card Component
 interface RecipeCardProps {
   recipe: Recipe;
@@ -337,8 +364,11 @@ function RecipeCard({ recipe, onLike, isLiked }: RecipeCardProps) {
             </div>
           </div>
 
+          {/* Cost & savings */}
+          <CostSavings recipe={recipe} />
+
           {/* Steps */}
-          <div className="mb-4">
+          <div className="mb-4 mt-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">{t('home.steps')}</h4>
             <ol className="space-y-2">
               {recipe.steps.map((step, idx) => (
@@ -422,8 +452,11 @@ function RecipeCard({ recipe, onLike, isLiked }: RecipeCardProps) {
             </Button>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
+
+        <CostSavings recipe={recipe} />
+
+        <Button
+          variant="ghost"
           className="w-full mt-3 text-green-600"
           onClick={() => setShowDetail(true)}
         >

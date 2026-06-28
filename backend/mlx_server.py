@@ -48,7 +48,23 @@ def download_pdf(url, filename="temp.pdf"):
     return filename
 
 
+def _num(value):
+    try:
+        return round(float(value), 2)
+    except (TypeError, ValueError):
+        return None
+
+
 def build_recipe_struct(recipe, index):
+    ingredients = []
+    for ing in recipe.get("ingredients") or []:
+        ingredients.append({
+            "name": ing.get("name", ""),
+            "amount": ing.get("amount", ""),
+            "isDiscounted": bool(ing.get("onSale")),
+            "discountPrice": _num(ing.get("price")),
+        })
+
     return {
         "id": str(uuid.uuid4()),
         "name": recipe.get("title", f"Recipe {index+1}"),
@@ -56,8 +72,10 @@ def build_recipe_struct(recipe, index):
         "estimatedTime": 20 + index * 5,
         "difficulty": "easy" if index == 0 else "medium",
         "servings": 2,
-        "ingredients": [],
+        "ingredients": ingredients,
         "steps": [recipe.get("description", "")],
+        "estimatedCost": _num(recipe.get("estimatedCost")),
+        "estimatedSavings": _num(recipe.get("estimatedSavings")),
         "nutrition": {
             "protein": "-",
             "carbs": "-",

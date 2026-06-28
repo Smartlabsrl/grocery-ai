@@ -86,6 +86,8 @@ export interface Recipe {
   imageUrl?: string;
   isDiscountBased?: boolean;
   healthTags?: HealthCondition[];
+  estimatedCost?: number;     // approx EUR to cook the dish (for `servings`)
+  estimatedSavings?: number;  // approx EUR saved vs normal prices
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
