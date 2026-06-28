@@ -93,39 +93,43 @@ def resolve_mercator():
     return "https://www.mercator.si" + best if best else None
 
 
-LIDL_OVERVIEW_URL = "https://www.lidl.si/c/spletni-katalog/s10019133"
 LIDL_FLYER_API = "https://endpoints.leaflets.schwarz/v4/flyer"
 
 
-def resolve_lidl():
-    """Lidl (Slovenia) serves flyers via the Schwarz `leaflets.schwarz` platform.
-
-    1. The overview page lists the current weekly catalog as a slug of the form
-       `lidlov-katalog-<year>-kw<week>` (Kalenderwoche). Pick the newest.
-    2. The leaflet API returns that flyer's metadata, including the PDF URL.
-    """
-    overview = _get(LIDL_OVERVIEW_URL)
-    overview.raise_for_status()
-
-    slugs = re.findall(r"lidlov-katalog-\d{4}-kw\d+", overview.text)
-    if not slugs:
-        print("No Lidl weekly catalog slug found on overview page")
-        return None
-
-    def week_key(slug):
-        m = re.search(r"(\d{4})-kw(\d+)", slug)
-        return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
-
-    slug = max(set(slugs), key=week_key)
-
-    resp = _get(LIDL_FLYER_API, params={
-        "flyer_identifier": slug,
-        "region_id": 0,
-        "region_code": 0,
-    })
+def _lidl_pdf(slug):
+    """Resolve a Lidl leaflet slug to its PDF via the Schwarz leaflet API."""
+    resp = _get(LIDL_FLYER_API, params={"flyer_identifier": slug, "region_id": 0, "region_code": 0})
     resp.raise_for_status()
     flyer = (resp.json() or {}).get("flyer") or {}
     return flyer.get("pdfUrl") or flyer.get("hiResPdfUrl")
+
+
+def resolve_lidl_si():
+    """Lidl Slovenia. The overview page lists the weekly catalog as a slug
+    `lidlov-katalog-<year>-kw<week>`; the newest one's PDF comes from the API."""
+    html = _get("https://www.lidl.si/c/spletni-katalog/s10019133").text
+    slugs = re.findall(r"lidlov-katalog-\d{4}-kw\d+", html)
+    if not slugs:
+        print("No Lidl SI weekly slug found")
+        return None
+    slug = max(set(slugs), key=lambda s: tuple(int(x) for x in re.search(r"(\d{4})-kw(\d+)", s).groups()))
+    return _lidl_pdf(slug)
+
+
+def resolve_lidl_it():
+    """Lidl Italia. The overview lists weekly leaflets as
+    `offerte-valide-dal-<dd>-<mm>-al-<dd>-<mm>-...`; pick the latest start date."""
+    html = _get("https://www.lidl.it/c/volantino-lidl/s10018048").text
+    slugs = re.findall(r"offerte-valide-dal-\d{2}-\d{2}-al-\d{2}-\d{2}[a-z0-9-]*", html)
+    if not slugs:
+        print("No Lidl IT weekly slug found")
+        return None
+    # key by start date (month, day)
+    def start_key(s):
+        m = re.search(r"dal-(\d{2})-(\d{2})", s)
+        return (int(m.group(2)), int(m.group(1))) if m else (0, 0)
+    slug = max(set(slugs), key=start_key)
+    return _lidl_pdf(slug)
 
 
 def resolve_spar():
@@ -150,10 +154,13 @@ def resolve_hofer():
 # (used to gate by the user's location). `brand` is matched against OSM tags to
 # find the nearest physical branch.
 STORES = {
+    # Slovenia
     "mercator": {"name": "Mercator", "resolver": resolve_mercator, "countries": {"si"}, "brand": "Mercator"},
     "spar": {"name": "Spar", "resolver": resolve_spar, "countries": {"si"}, "brand": "Spar"},
     "hofer": {"name": "Hofer", "resolver": resolve_hofer, "countries": {"si"}, "brand": "Hofer"},
-    "lidl": {"name": "Lidl", "resolver": resolve_lidl, "countries": {"si"}, "brand": "Lidl"},
+    "lidl": {"name": "Lidl", "resolver": resolve_lidl_si, "countries": {"si"}, "brand": "Lidl"},
+    # Italy
+    "lidl-it": {"name": "Lidl", "resolver": resolve_lidl_it, "countries": {"it"}, "brand": "Lidl"},
 }
 
 
