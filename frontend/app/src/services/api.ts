@@ -13,6 +13,12 @@ export interface BackendStore {
   address?: string;
 }
 
+export interface NearbyResult {
+  country: string | null;
+  region: string | null; // administrative region (e.g. "Lombardy")
+  stores: BackendStore[];
+}
+
 export interface BackendDealItem {
   name: string;
   discountPrice: number;
@@ -33,7 +39,7 @@ export interface SupermarketDealsResponse {
 export async function getNearbySupermarkets(
   latitude?: number,
   longitude?: number
-): Promise<BackendStore[]> {
+): Promise<NearbyResult> {
   const q =
     latitude != null && longitude != null
       ? `?lat=${latitude}&lon=${longitude}`

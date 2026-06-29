@@ -42,6 +42,7 @@ export function SupermarketPage() {
   const { t } = useTranslation();
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
   const [stores, setStores] = useState<BackendStore[]>([]);
+  const [region, setRegion] = useState<string | null>(null);
   const [dealCounts, setDealCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -58,11 +59,12 @@ export function SupermarketPage() {
     setError(null);
 
     try {
-      const backendStores = await getNearbySupermarkets(
+      const { stores: backendStores, region } = await getNearbySupermarkets(
         selectedAddress?.latitude,
         selectedAddress?.longitude
       );
       setStores(backendStores);
+      setRegion(region);
 
       const allDiscounts: DiscountItem[] = [];
       const counts: Record<string, number> = {};
@@ -138,6 +140,7 @@ export function SupermarketPage() {
               <h1 className="text-lg font-bold text-gray-900">{t('supermarket.title')}</h1>
               <p className="text-xs text-gray-500">
                 {selectedAddress ? `${t('nav.near')} ${selectedAddress.name}` : t('settings.location')}
+                {region ? ` · ${region}` : ''}
               </p>
             </div>
             <Button

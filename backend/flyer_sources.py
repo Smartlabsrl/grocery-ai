@@ -227,20 +227,29 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def country_for(lat, lon):
-    """Reverse-geocode coordinates to an ISO-3166 alpha-2 country code (lowercase)."""
+def geocode(lat, lon):
+    """Reverse-geocode coordinates to {country, region}. `country` is an ISO-3166
+    alpha-2 code (lowercase); `region` is the administrative region/state name
+    (e.g. 'Lombardy'), used for region-level flyer selection."""
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/reverse",
-            params={"format": "json", "lat": lat, "lon": lon, "zoom": 5},
+            params={"format": "json", "lat": lat, "lon": lon, "zoom": 8, "addressdetails": 1},
             headers={"User-Agent": _BROWSER_UA, "Accept-Language": "en"},
             timeout=20,
         )
         resp.raise_for_status()
-        return (resp.json().get("address", {}).get("country_code") or "").lower()
+        a = resp.json().get("address", {})
+        return {"country": (a.get("country_code") or "").lower(),
+                "region": a.get("state") or a.get("region") or ""}
     except Exception as e:
         print("Reverse geocode failed:", e)
-        return ""
+        return {"country": "", "region": ""}
+
+
+def country_for(lat, lon):
+    """Back-compat: just the country code."""
+    return geocode(lat, lon)["country"]
 
 
 def _nearest_branches(lat, lon, brands, radius_m=20000):
@@ -297,17 +306,19 @@ _nearby_cache = {}
 _NEARBY_TTL = 60 * 60  # 1 hour
 
 
-def nearby_stores(lat, lon):
-    """Stores available at the user's location, with the nearest branch + distance.
-    Empty list if the user's country isn't covered yet."""
+def nearby(lat, lon):
+    """Location context for the user: country, administrative region, and the
+    supported stores there (each with nearest branch + distance). The store list
+    is empty if the user's country isn't covered yet."""
     import time
     key = (round(lat, 2), round(lon, 2))
     cached = _nearby_cache.get(key)
     if cached and time.time() - cached[0] < _NEARBY_TTL:
         return cached[1]
 
-    country = country_for(lat, lon)
-    print(f"Resolved location -> country '{country}'")
+    geo = geocode(lat, lon)
+    country, region = geo["country"], geo["region"]
+    print(f"Resolved location -> country '{country}', region '{region}'")
 
     covered = {sid: meta for sid, meta in STORES.items()
                if not country or country in meta["countries"]}
@@ -323,5 +334,11 @@ def nearby_stores(lat, lon):
 
     # Nearest first; chains with no located branch sink to the bottom.
     results.sort(key=lambda s: s.get("distance", float("inf")))
-    _nearby_cache[key] = (time.time(), results)
-    return results
+    payload = {"country": country, "region": region, "stores": results}
+    _nearby_cache[key] = (time.time(), payload)
+    return payload
+
+
+def nearby_stores(lat, lon):
+    """Back-compat: just the list of stores."""
+    return nearby(lat, lon)["stores"]

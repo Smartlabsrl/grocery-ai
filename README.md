@@ -98,9 +98,12 @@ Android/iOS (Capacitor) build steps.
   resolve their current flyer fully dynamically; **Spar** and **Hofer** are scraped
   from a third-party aggregator and read with a vision model (see below).
 - **Location-aware stores**: `/nearby-supermarkets?lat=&lon=` reverse-geocodes the
-  user's country, returns only chains that operate there (empty if uncovered), and
-  attaches the nearest physical branch + distance (best-effort via OSM). Home picks
-  the nearest store for the daily menu instead of a hardcoded one.
+  user's **country + region** (e.g. `it` / `Lombardy`), returns only chains that
+  operate there (empty if uncovered) with the nearest physical branch + distance
+  (best-effort via OSM). Home picks the nearest store for the daily menu instead of
+  a hardcoded one. Coverage: **Slovenia** (Mercator, Spar, Hofer, Lidl) and **Italy**
+  (Lidl). Flyers are national/regional, not per-store; region-varying chains
+  (Conad/Coop/Carrefour) are the next addition.
 - **Per-dish cost & savings**: each recipe lists ingredients (on-sale highlighted),
   an estimated cost, and how much you save vs. normal prices.
 - Restaurants page uses real **OpenStreetMap** (Overpass API) data — free, no API key.

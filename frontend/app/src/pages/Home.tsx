@@ -54,7 +54,7 @@ export function Home() {
   
     try {
       // Pick the supermarket nearest to the user (location-aware), not a fixed store.
-      const stores = await getNearbySupermarkets(
+      const { stores } = await getNearbySupermarkets(
         selectedAddress?.latitude,
         selectedAddress?.longitude
       );
