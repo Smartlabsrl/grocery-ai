@@ -15,6 +15,9 @@ MOONSHOT_API_KEY = os.getenv("MOONSHOT_API_KEY")
 # 66-page / 47 MB catalog) otherwise blow past the OCR/request timeout.
 FLYER_MAX_PAGES = int(os.getenv("FLYER_MAX_PAGES", "12"))
 
+# Max plausible discount; above this we assume a misread price and drop the item.
+MAX_DISCOUNT_PCT = int(os.getenv("MAX_DISCOUNT_PCT", "70"))
+
 # Vision model for image-based flyers (more accurate than file-extract OCR on
 # image-heavy leaflets like Hofer). Pages are sent in batches.
 VISION_MODEL = os.getenv("MOONSHOT_VISION_MODEL", "moonshot-v1-128k-vision-preview")
@@ -157,12 +160,21 @@ def _parse_products_json(raw):
 
 
 VISION_PROMPT = (
-    "These images are pages from a Slovenian supermarket flyer. "
-    "Extract EVERY food/grocery product that shows a discounted (action) price. "
-    "Read prices carefully and keep the decimal point: '3,99' or '3.99' -> 3.99, "
-    "never 399. discountPrice is the current/action price; normalPrice is the "
-    "crossed-out regular price (omit the item if there is no regular price). "
-    "Ignore non-food, alcohol, and loyalty-card-only offers.\n"
+    "These images are pages from a European supermarket flyer. "
+    "Extract food/grocery products that are on offer.\n"
+    "Strict price rules (accuracy matters more than quantity):\n"
+    "- Only include an item if BOTH its current/action price AND its original "
+    "(struck-through) regular price are clearly printed for the SAME product. "
+    "If the regular price is not clearly shown, OMIT the item — never guess it.\n"
+    "- discountPrice = the big current price; normalPrice = the smaller "
+    "struck-through 'prima/anziché/was' price. discountPrice MUST be lower than "
+    "normalPrice.\n"
+    "- Use the PACKAGE price, not the secondary per-kg/per-litre price "
+    "(ignore 'al kg', 'cena za kg', '/kg').\n"
+    "- Keep decimals exactly: '1,99' or '1.99' -> 1.99, never 199.\n"
+    "- Typical grocery discounts are 5-50%. If your numbers imply more than ~65% "
+    "off, you most likely misread the regular price — re-check or OMIT the item.\n"
+    "- Ignore non-food, alcohol, loyalty-card-only prices, and multibuy text.\n"
     "Return ONLY a valid JSON array, no prose:\n"
     '[{"name":"","discountPrice":0.0,"normalPrice":0.0,"unit":"kg or piece"}]'
 )
@@ -235,9 +247,9 @@ def clean_and_rank_products(products):
 
             discount_percent = round((normal - discount) / normal * 100, 2)
 
-            # Drop implausible discounts (usually a decimal OCR error, e.g.
-            # 0.39 read as 39 against 5.99 -> "-93%").
-            if discount_percent <= 0 or discount_percent >= 90:
+            # Drop implausible discounts: real grocery deals rarely exceed ~65%,
+            # so a higher value almost always means a misread regular price.
+            if discount_percent <= 0 or discount_percent > MAX_DISCOUNT_PCT:
                 continue
 
             name = (p.get("name") or "").strip()
