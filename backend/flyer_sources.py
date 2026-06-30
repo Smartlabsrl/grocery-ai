@@ -78,7 +78,7 @@ def _latest_by_date(paths):
     return max(paths, key=date_key) if paths else None
 
 
-def resolve_mercator():
+def resolve_mercator(ctx=None):
     """Mercator publishes flyer PDFs directly on its catalogs page."""
     resp = _get("https://www.mercator.si/katalogi/")
     resp.raise_for_status()
@@ -104,7 +104,7 @@ def _lidl_pdf(slug):
     return flyer.get("pdfUrl") or flyer.get("hiResPdfUrl")
 
 
-def resolve_lidl_si():
+def resolve_lidl_si(ctx=None):
     """Lidl Slovenia. The overview page lists the weekly catalog as a slug
     `lidlov-katalog-<year>-kw<week>`; the newest one's PDF comes from the API."""
     html = _get("https://www.lidl.si/c/spletni-katalog/s10019133").text
@@ -116,7 +116,7 @@ def resolve_lidl_si():
     return _lidl_pdf(slug)
 
 
-def resolve_lidl_it():
+def resolve_lidl_it(ctx=None):
     """Lidl Italia. The overview lists weekly leaflets as
     `offerte-valide-dal-<dd>-<mm>-al-<dd>-<mm>-...`; pick the latest start date."""
     html = _get("https://www.lidl.it/c/volantino-lidl/s10018048").text
@@ -132,7 +132,7 @@ def resolve_lidl_it():
     return _lidl_pdf(slug)
 
 
-def resolve_spar():
+def resolve_spar(ctx=None):
     """Spar Slovenia. The official site (spar.si) bot-blocks server-side requests
     (HTTP 403), so the current catalog page images are scraped from the
     moj-letak.si aggregator and read with the vision model. SPAR_FLYER_URL
@@ -141,7 +141,7 @@ def resolve_spar():
     return {"type": "images", "urls": images} if images else None
 
 
-def resolve_hofer():
+def resolve_hofer(ctx=None):
     """Hofer / Aldi Süd Slovenia. The official site (hofer.si) bot-blocks
     server-side requests (HTTP 403), so the current leaflet page images are
     scraped from moj-letak.si and read with the vision model. HOFER_FLYER_URL
@@ -150,9 +150,90 @@ def resolve_hofer():
     return {"type": "images", "urls": images} if images else None
 
 
+# ---- Italy: regional chains via the DoveConviene (ShopFully) aggregator ----
+# DoveConviene indexes flyers by city, so a regional chain's flyer follows the
+# user's location. Flow: /{city}/volantino/{chain} -> publication id ->
+# publication_pages bundle -> per-page images -> vision model.
+DOVECONVIENE = "https://www.doveconviene.it"
+SHOPFULLY_PAGES = "https://shopfully-publication-api.global.ssl.fastly.net/publication_pages/it_it/{pub}/1"
+
+
+def _slug(text):
+    import unicodedata
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def _it_city_slug(lat, lon):
+    """Italian city slug (e.g. 'milano') for the DoveConviene city URL."""
+    if lat is None or lon is None:
+        return ""
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"format": "json", "lat": lat, "lon": lon, "zoom": 10, "addressdetails": 1},
+            headers={"User-Agent": _BROWSER_UA, "Accept-Language": "it"},
+            timeout=15,
+        )
+        a = resp.json().get("address", {})
+        city = a.get("city") or a.get("town") or a.get("municipality") or a.get("village") or ""
+        return _slug(city)
+    except Exception as e:
+        print("IT city lookup failed:", e)
+        return ""
+
+
+def _doveconviene_images(chain_slug, ctx):
+    """Resolve a chain's current flyer page images from DoveConviene, preferring
+    the user's city (region-level), falling back to the national page."""
+    ctx = ctx or {}
+    city = _it_city_slug(ctx.get("lat"), ctx.get("lon"))
+    paths = ([f"/{city}/volantino/{chain_slug}"] if city else []) + [f"/volantino/{chain_slug}"]
+
+    for path in paths:
+        try:
+            resp = requests.get(DOVECONVIENE + path, headers={"User-Agent": _BROWSER_UA}, timeout=30)
+            if not resp.ok:
+                continue
+            m = re.search(r"publication/it_it_(\d+)", resp.text)
+            if not m:
+                continue
+            pub = m.group(1)
+
+            pages = requests.get(SHOPFULLY_PAGES.format(pub=pub),
+                                 headers={"User-Agent": _BROWSER_UA}, timeout=30).json()
+            urls = []
+            for k in sorted((k for k in pages if k.isdigit()), key=int):
+                descs = [d for d in pages[k].get("pageRepresentationDescriptors", [])
+                         if d.get("type") == "image"]
+                if not descs:
+                    continue
+                best = max(descs, key=lambda d: d.get("width", 0))
+                urls.append("https://" + best["pageRepresentation"]["resourcePath"])
+            if urls:
+                print(f"DoveConviene {chain_slug}: publication {pub}, {len(urls)} pages via {path}")
+                return urls[:FLYER_MAX_PAGES]
+        except Exception as e:
+            print(f"DoveConviene {chain_slug} failed ({path}):", e)
+    return None
+
+
+def _it_aggregator_resolver(chain_slug):
+    def resolver(ctx=None):
+        images = _doveconviene_images(chain_slug, ctx)
+        return {"type": "images", "urls": images} if images else None
+    return resolver
+
+
+resolve_conad = _it_aggregator_resolver("conad")
+resolve_coop = _it_aggregator_resolver("coop")
+resolve_carrefour = _it_aggregator_resolver("carrefour")
+
+
 # store id -> metadata. `countries` = ISO-3166 alpha-2 codes the chain serves
 # (used to gate by the user's location). `brand` is matched against OSM tags to
-# find the nearest physical branch.
+# find the nearest physical branch. `regional` flyers depend on the user's
+# location, so their deals are cached per-area.
 STORES = {
     # Slovenia
     "mercator": {"name": "Mercator", "resolver": resolve_mercator, "countries": {"si"}, "brand": "Mercator"},
@@ -161,6 +242,9 @@ STORES = {
     "lidl": {"name": "Lidl", "resolver": resolve_lidl_si, "countries": {"si"}, "brand": "Lidl"},
     # Italy
     "lidl-it": {"name": "Lidl", "resolver": resolve_lidl_it, "countries": {"it"}, "brand": "Lidl"},
+    "conad": {"name": "Conad", "resolver": resolve_conad, "countries": {"it"}, "brand": "Conad", "regional": True},
+    "coop-it": {"name": "Coop", "resolver": resolve_coop, "countries": {"it"}, "brand": "Coop", "regional": True},
+    "carrefour-it": {"name": "Carrefour", "resolver": resolve_carrefour, "countries": {"it"}, "brand": "Carrefour", "regional": True},
 }
 
 
@@ -168,10 +252,11 @@ def list_stores():
     return [{"id": sid, "name": meta["name"]} for sid, meta in STORES.items()]
 
 
-def resolve_flyer_source(store):
+def resolve_flyer_source(store, lat=None, lon=None):
     """Resolve a store's current flyer to a source descriptor, or None.
 
-    Returns one of:
+    `lat`/`lon` let location-dependent (regional) resolvers pick the flyer for the
+    user's area. Returns one of:
       {"type": "pdf", "url": "<pdf url or local path>"}
       {"type": "images", "urls": ["<page image url>", ...]}
     """
@@ -186,7 +271,7 @@ def resolve_flyer_source(store):
 
     resolver = entry["resolver"]
     try:
-        result = resolver()
+        result = resolver({"lat": lat, "lon": lon})
     except Exception as e:
         print(f"Flyer resolution failed for {store}: {e}")
         return None

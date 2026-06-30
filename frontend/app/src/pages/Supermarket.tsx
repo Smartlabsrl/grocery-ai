@@ -73,7 +73,12 @@ export function SupermarketPage() {
       const results = await Promise.all(
         backendStores.map(async (store) => {
           try {
-            const data = await getSupermarketDeals(store.id, refresh);
+            const data = await getSupermarketDeals(
+              store.id,
+              refresh,
+              selectedAddress?.latitude,
+              selectedAddress?.longitude
+            );
             return mapDealsToDiscountItems(store.id, store.name, data.usedDiscountItems || []);
           } catch (err) {
             console.error(`Failed to load deals for ${store.id}:`, err);

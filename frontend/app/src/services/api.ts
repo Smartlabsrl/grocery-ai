@@ -49,14 +49,19 @@ export async function getNearbySupermarkets(
   return res.json();
 }
 
-/** Parsed deals + AI menu for a single store. */
+/** Parsed deals + AI menu for a single store. Coordinates let regional chains
+ *  return the flyer for the user's area. */
 export async function getSupermarketDeals(
   store: string,
-  refresh = false
+  refresh = false,
+  latitude?: number,
+  longitude?: number
 ): Promise<SupermarketDealsResponse> {
+  const loc =
+    latitude != null && longitude != null ? `&lat=${latitude}&lon=${longitude}` : '';
   const url = `${API_BASE}/supermarket-deals?store=${encodeURIComponent(store)}${
     refresh ? '&refresh=true' : ''
-  }`;
+  }${loc}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();

@@ -102,34 +102,49 @@ def nearby_supermarkets():
     return jsonify({"country": None, "region": None, "stores": list_stores()})
 
 
+def _to_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @app.route("/supermarket-deals")
 def supermarket_deals():
     store = request.args.get("store")
     refresh = request.args.get("refresh")
+    lat = _to_float(request.args.get("lat"))
+    lon = _to_float(request.args.get("lon"))
 
     if store not in STORES:
         return jsonify({"error": "Store not supported"}), 400
 
+    # Regional chains' flyers depend on the user's area, so cache them per-area.
+    if STORES[store].get("regional") and lat is not None and lon is not None:
+        cache_key = f"{store}@{round(lat, 1)},{round(lon, 1)}"
+    else:
+        cache_key = store
+
     # 1) memory cache
-    if not refresh and store in cache_data:
-        if time.time() - cache_time.get(store, 0) < CACHE_DURATION:
-            print("Returning memory cache:", store)
-            return jsonify(cache_data[store])
+    if not refresh and cache_key in cache_data:
+        if time.time() - cache_time.get(cache_key, 0) < CACHE_DURATION:
+            print("Returning memory cache:", cache_key)
+            return jsonify(cache_data[cache_key])
 
     # 2) db cache
     if not refresh:
-        db_data = get_latest_deals(store)
+        db_data = get_latest_deals(cache_key)
         if db_data:
-            print("Loaded from DB:", store)
-            cache_data[store] = db_data
-            cache_time[store] = time.time()
+            print("Loaded from DB:", cache_key)
+            cache_data[cache_key] = db_data
+            cache_time[cache_key] = time.time()
             return jsonify(db_data)
 
     # 3) real processing
     with lock:
         try:
-            print("Resolving current flyer...")
-            source = resolve_flyer_source(store)
+            print(f"Resolving current flyer for {cache_key}...")
+            source = resolve_flyer_source(store, lat, lon)
             if not source:
                 return jsonify({
                     "error": f"Could not resolve a current flyer for '{store}'. "
@@ -163,9 +178,9 @@ def supermarket_deals():
                 "usedDiscountItems": top_products
             }
 
-            cache_data[store] = structured_response
-            cache_time[store] = time.time()
-            save_deals(store, structured_response)
+            cache_data[cache_key] = structured_response
+            cache_time[cache_key] = time.time()
+            save_deals(cache_key, structured_response)
 
             return jsonify(structured_response)
 

@@ -63,7 +63,12 @@ export function Home() {
         return;
       }
 
-      const data = await getSupermarketDeals(stores[0].id, force);
+      const data = await getSupermarketDeals(
+        stores[0].id,
+        force,
+        selectedAddress?.latitude,
+        selectedAddress?.longitude
+      );
       setDailyMenu(data as unknown as DailyMenu);
 
     } catch (err) {
