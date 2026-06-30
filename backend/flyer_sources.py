@@ -225,9 +225,18 @@ def _it_aggregator_resolver(chain_slug):
     return resolver
 
 
-resolve_conad = _it_aggregator_resolver("conad")
-resolve_coop = _it_aggregator_resolver("coop")
-resolve_carrefour = _it_aggregator_resolver("carrefour")
+# Italian chains served via DoveConviene: store id -> (display name, slug, OSM brand)
+IT_AGGREGATOR_CHAINS = [
+    ("conad", "Conad", "conad", "Conad"),
+    ("coop-it", "Coop", "coop", "Coop"),
+    ("carrefour-it", "Carrefour", "carrefour", "Carrefour"),
+    ("esselunga", "Esselunga", "esselunga", "Esselunga"),
+    ("famila", "Famila", "famila", "Famila"),
+    ("eurospin", "Eurospin", "eurospin", "Eurospin"),
+    ("pam", "Pam", "pam", "Pam"),
+    ("bennet", "Bennet", "bennet", "Bennet"),
+    ("md", "MD", "md", "MD"),
+]
 
 
 # store id -> metadata. `countries` = ISO-3166 alpha-2 codes the chain serves
@@ -240,12 +249,19 @@ STORES = {
     "spar": {"name": "Spar", "resolver": resolve_spar, "countries": {"si"}, "brand": "Spar"},
     "hofer": {"name": "Hofer", "resolver": resolve_hofer, "countries": {"si"}, "brand": "Hofer"},
     "lidl": {"name": "Lidl", "resolver": resolve_lidl_si, "countries": {"si"}, "brand": "Lidl"},
-    # Italy
+    # Italy — Lidl via the Schwarz API (national)
     "lidl-it": {"name": "Lidl", "resolver": resolve_lidl_it, "countries": {"it"}, "brand": "Lidl"},
-    "conad": {"name": "Conad", "resolver": resolve_conad, "countries": {"it"}, "brand": "Conad", "regional": True},
-    "coop-it": {"name": "Coop", "resolver": resolve_coop, "countries": {"it"}, "brand": "Coop", "regional": True},
-    "carrefour-it": {"name": "Carrefour", "resolver": resolve_carrefour, "countries": {"it"}, "brand": "Carrefour", "regional": True},
 }
+
+# Italy — regional chains via DoveConviene (location-varying)
+for _sid, _name, _slug, _brand in IT_AGGREGATOR_CHAINS:
+    STORES[_sid] = {
+        "name": _name,
+        "resolver": _it_aggregator_resolver(_slug),
+        "countries": {"it"},
+        "brand": _brand,
+        "regional": True,
+    }
 
 
 def list_stores():

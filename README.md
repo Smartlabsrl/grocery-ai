@@ -102,9 +102,10 @@ Android/iOS (Capacitor) build steps.
   operate there (empty if uncovered) with the nearest physical branch + distance
   (best-effort via OSM). Home picks the nearest store for the daily menu instead of
   a hardcoded one. Coverage: **Slovenia** (Mercator, Spar, Hofer, Lidl) and **Italy**
-  (Lidl national; **Conad/Coop/Carrefour region-varying** via the DoveConviene
-  aggregator — the flyer follows the user's city, e.g. Milan and Naples get
-  different Conad flyers, read with the vision model).
+  (Lidl national; **Conad, Coop, Carrefour, Esselunga, Famila, Eurospin, Pam,
+  Bennet, MD** region-varying via the DoveConviene aggregator — the flyer follows
+  the user's city, e.g. Milan and Naples get different Conad flyers, read with the
+  vision model). Add an Italian chain by appending to `IT_AGGREGATOR_CHAINS`.
 - **Per-dish cost & savings**: each recipe lists ingredients (on-sale highlighted),
   an estimated cost, and how much you save vs. normal prices.
 - Restaurants page uses real **OpenStreetMap** (Overpass API) data — free, no API key.
