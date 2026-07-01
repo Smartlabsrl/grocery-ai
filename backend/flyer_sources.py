@@ -168,18 +168,28 @@ def _it_city_slug(lat, lon):
     """Italian city slug (e.g. 'milano') for the DoveConviene city URL."""
     if lat is None or lon is None:
         return ""
+    # BigDataCloud (works from datacenter IPs); Italian locality names.
     try:
-        resp = requests.get(
+        d = requests.get(
+            "https://api.bigdatacloud.net/data/reverse-geocode-client",
+            params={"latitude": lat, "longitude": lon, "localityLanguage": "it"},
+            headers={"User-Agent": _BROWSER_UA}, timeout=15,
+        ).json()
+        city = d.get("city") or d.get("locality") or ""
+        if city:
+            return _slug(city)
+    except Exception as e:
+        print("IT city lookup (BigDataCloud) failed:", e)
+    try:
+        a = requests.get(
             "https://nominatim.openstreetmap.org/reverse",
             params={"format": "json", "lat": lat, "lon": lon, "zoom": 10, "addressdetails": 1},
-            headers={"User-Agent": _BROWSER_UA, "Accept-Language": "it"},
-            timeout=15,
-        )
-        a = resp.json().get("address", {})
+            headers={"User-Agent": _BROWSER_UA, "Accept-Language": "it"}, timeout=15,
+        ).json().get("address", {})
         city = a.get("city") or a.get("town") or a.get("municipality") or a.get("village") or ""
         return _slug(city)
     except Exception as e:
-        print("IT city lookup failed:", e)
+        print("IT city lookup (Nominatim) failed:", e)
         return ""
 
 
@@ -254,10 +264,10 @@ STORES = {
 }
 
 # Italy — regional chains via DoveConviene (location-varying)
-for _sid, _name, _slug, _brand in IT_AGGREGATOR_CHAINS:
+for _sid, _name, _dcslug, _brand in IT_AGGREGATOR_CHAINS:
     STORES[_sid] = {
         "name": _name,
-        "resolver": _it_aggregator_resolver(_slug),
+        "resolver": _it_aggregator_resolver(_dcslug),
         "countries": {"it"},
         "brand": _brand,
         "regional": True,
@@ -328,10 +338,28 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+BIGDATACLOUD = "https://api.bigdatacloud.net/data/reverse-geocode-client"
+
+
 def geocode(lat, lon):
     """Reverse-geocode coordinates to {country, region}. `country` is an ISO-3166
     alpha-2 code (lowercase); `region` is the administrative region/state name
-    (e.g. 'Lombardy'), used for region-level flyer selection."""
+    (e.g. 'Lombardy'). Uses BigDataCloud (works from datacenter IPs) with a
+    Nominatim fallback — Nominatim blocks many cloud/deployment IPs."""
+    try:
+        resp = requests.get(
+            BIGDATACLOUD,
+            params={"latitude": lat, "longitude": lon, "localityLanguage": "en"},
+            headers={"User-Agent": _BROWSER_UA}, timeout=15,
+        )
+        resp.raise_for_status()
+        d = resp.json()
+        cc = (d.get("countryCode") or "").lower()
+        if cc:
+            return {"country": cc, "region": d.get("principalSubdivision") or ""}
+    except Exception as e:
+        print("BigDataCloud geocode failed:", e)
+
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/reverse",
@@ -344,7 +372,7 @@ def geocode(lat, lon):
         return {"country": (a.get("country_code") or "").lower(),
                 "region": a.get("state") or a.get("region") or ""}
     except Exception as e:
-        print("Reverse geocode failed:", e)
+        print("Nominatim geocode failed:", e)
         return {"country": "", "region": ""}
 
 
