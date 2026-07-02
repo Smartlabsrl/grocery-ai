@@ -1,0 +1,23 @@
+# Render Blueprint — one-click deploy of the grocery-ai backend.
+# In Render: New + -> Blueprint -> connect this repo -> it reads this file.
+# You must set MOONSHOT_API_KEY (marked sync:false) in the dashboard.
+services:
+  - type: web
+    name: grocery-ai-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn mlx_server:app --workers 1 --threads 4 --timeout 300
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: MOONSHOT_API_KEY
+        sync: false            # secret — enter your Moonshot/Kimi key in the dashboard
+      - key: MOONSHOT_MODEL
+        value: moonshot-v1-128k
+      - key: PARSER_MODE
+        value: cloud
+      - key: RECIPE_MODE
+        value: cloud

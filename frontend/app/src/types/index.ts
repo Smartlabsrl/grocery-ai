@@ -86,6 +86,8 @@ export interface Recipe {
   imageUrl?: string;
   isDiscountBased?: boolean;
   healthTags?: HealthCondition[];
+  estimatedCost?: number;     // approx EUR to cook the dish (for `servings`)
+  estimatedSavings?: number;  // approx EUR saved vs normal prices
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
@@ -165,7 +167,7 @@ export interface Restaurant {
   distance?: number;
   rating: number;
   reviewCount: number;
-  priceRange: 1 | 2 | 3 | 4;
+  priceRange: number; // 1-4; 0 = unknown (e.g. OpenStreetMap has no price level)
   isOpen: boolean;
   openingHours: OpeningHours;
   phone?: string;

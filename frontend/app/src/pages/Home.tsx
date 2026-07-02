@@ -15,7 +15,9 @@ import {
   Sparkles,
   Store,
   Navigation,
-  AlertCircle
+  AlertCircle,
+  Wallet,
+  PiggyBank
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +27,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppStore } from '@/store/useAppStore';
 import { useLocation } from '@/hooks/useLocation';
-import type { Recipe } from '@/types';
+import { getSupermarketDeals, getNearbySupermarkets } from '@/services/api';
+import type { Recipe, DailyMenu } from '@/types';
 
 export function Home() {
   const { t } = useTranslation();
@@ -50,18 +53,24 @@ export function Home() {
     setIsGenerating(true);
   
     try {
-      const url = force
-      ? "https://grocery-ai-backend-kli0.onrender.com/supermarket-deals?store=lidl&refresh=true"
-      : "https://grocery-ai-backend-kli0.onrender.com/supermarket-deals?store=lidl";
-  
-      const res = await fetch(url);
-  
-      if (!res.ok) throw new Error("Backend error");
-  
-      const data = await res.json();
-  
-      setDailyMenu(data);
-  
+      // Pick the supermarket nearest to the user (location-aware), not a fixed store.
+      const { stores } = await getNearbySupermarkets(
+        selectedAddress?.latitude,
+        selectedAddress?.longitude
+      );
+      if (!stores.length) {
+        setError(t('home.noStoreNearby') || 'No supported supermarket near you yet.');
+        return;
+      }
+
+      const data = await getSupermarketDeals(
+        stores[0].id,
+        force,
+        selectedAddress?.latitude,
+        selectedAddress?.longitude
+      );
+      setDailyMenu(data as unknown as DailyMenu);
+
     } catch (err) {
       console.error("Failed to load weekly savings plan:", err);
       setError("Failed to load real supermarket deals.");
@@ -248,12 +257,29 @@ export function Home() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {dailyMenu.usedDiscountItems.map((item, idx) => (
-                  <Badge key={idx} variant="secondary" className="bg-green-50 text-green-700">
-                    {item.name}
-                    <span className="ml-1 text-green-500">-{item.discountPercentage}%</span>
-                  </Badge>
-                ))}
+                {dailyMenu.usedDiscountItems.map((item, idx) => {
+                  // Backend sends `discountPercent`/`normalPrice`; tolerate both shapes.
+                  const it = item as {
+                    discountPercentage?: number;
+                    discountPercent?: number;
+                    normalPrice?: number;
+                    discountPrice?: number;
+                  };
+                  const pct =
+                    it.discountPercentage ??
+                    it.discountPercent ??
+                    (it.normalPrice && it.discountPrice
+                      ? Math.round((1 - it.discountPrice / it.normalPrice) * 100)
+                      : null);
+                  return (
+                    <Badge key={idx} variant="secondary" className="bg-green-50 text-green-700">
+                      {item.name}
+                      {pct != null && (
+                        <span className="ml-1 text-green-500">-{Math.round(pct)}%</span>
+                      )}
+                    </Badge>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -263,6 +289,31 @@ export function Home() {
       {/* No Cook Mode Modal */}
       {showNoCookMode && (
         <NoCookMode onClose={() => setShowNoCookMode(false)} />
+      )}
+    </div>
+  );
+}
+
+// Cost & savings strip — the core "save money" payoff for a dish
+function CostSavings({ recipe }: { recipe: Recipe }) {
+  const { t } = useTranslation();
+  const cost = recipe.estimatedCost;
+  const savings = recipe.estimatedSavings;
+  if (cost == null && savings == null) return null;
+
+  return (
+    <div className="flex items-center gap-2 mt-3 flex-wrap">
+      {cost != null && (
+        <Badge variant="secondary" className="text-sm bg-gray-100 text-gray-800">
+          <Wallet className="w-3.5 h-3.5 mr-1" />
+          ~€{cost.toFixed(2)} · {recipe.servings} {t('home.servings')}
+        </Badge>
+      )}
+      {savings != null && savings > 0 && (
+        <Badge className="text-sm bg-green-500 text-white">
+          <PiggyBank className="w-3.5 h-3.5 mr-1" />
+          {t('home.save')} €{savings.toFixed(2)}
+        </Badge>
       )}
     </div>
   );
@@ -327,8 +378,11 @@ function RecipeCard({ recipe, onLike, isLiked }: RecipeCardProps) {
             </div>
           </div>
 
+          {/* Cost & savings */}
+          <CostSavings recipe={recipe} />
+
           {/* Steps */}
-          <div className="mb-4">
+          <div className="mb-4 mt-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">{t('home.steps')}</h4>
             <ol className="space-y-2">
               {recipe.steps.map((step, idx) => (
@@ -412,8 +466,11 @@ function RecipeCard({ recipe, onLike, isLiked }: RecipeCardProps) {
             </Button>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
+
+        <CostSavings recipe={recipe} />
+
+        <Button
+          variant="ghost"
           className="w-full mt-3 text-green-600"
           onClick={() => setShowDetail(true)}
         >

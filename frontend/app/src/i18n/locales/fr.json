@@ -39,7 +39,9 @@
     "difficulty": "Difficulté",
     "easy": "Facile",
     "medium": "Moyen",
-    "hard": "Difficile"
+    "hard": "Difficile",
+    "save": "Économisez",
+    "noStoreNearby": "Aucun supermarché pris en charge près de chez vous pour l'instant."
   },
   "supermarket": {
     "title": "Promotions Supermarché",
@@ -60,7 +62,11 @@
       "grains": "Céréales",
       "snacks": "Collations",
       "beverages": "Boissons"
-    }
+    },
+    "noDeals": "Aucune offre disponible pour le moment.",
+    "loadError": "Échec du chargement des offres.",
+    "dealsAvailable": "offres disponibles",
+    "notCovered": "Aucun supermarché pris en charge dans votre région pour l'instant."
   },
   "restaurant": {
     "title": "Restaurants",

@@ -7,7 +7,8 @@
     "home": "Home",
     "deals": "Deals",
     "dining": "Dining",
-    "settings": "Settings"
+    "settings": "Settings",
+    "near": "near"
   },
   "home": {
     "title": "Today's Menu",
@@ -38,7 +39,9 @@
     "difficulty": "Difficulty",
     "easy": "Easy",
     "medium": "Medium",
-    "hard": "Hard"
+    "hard": "Hard",
+    "save": "Save",
+    "noStoreNearby": "No supported supermarket near you yet."
   },
   "noCook": {
     "title": "Don't Feel Like Cooking?",
@@ -64,7 +67,11 @@
       "grains": "Grains",
       "snacks": "Snacks",
       "beverages": "Beverages"
-    }
+    },
+    "noDeals": "No deals available right now.",
+    "loadError": "Failed to load supermarket deals.",
+    "dealsAvailable": "deals available",
+    "notCovered": "No supported supermarkets in your area yet."
   },
   "restaurant": {
     "title": "Restaurants",
@@ -182,12 +189,5 @@
     "close": "Close",
     "yes": "Yes",
     "no": "No"
-  },
-  "nav": {
-    "home": "Home",
-    "deals": "Deals",
-    "dining": "Dining",
-    "settings": "Settings",
-    "near": "near"
   }
 }

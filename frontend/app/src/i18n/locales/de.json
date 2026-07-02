@@ -39,7 +39,9 @@
     "difficulty": "Schwierigkeit",
     "easy": "Einfach",
     "medium": "Mittel",
-    "hard": "Schwer"
+    "hard": "Schwer",
+    "save": "Spare",
+    "noStoreNearby": "Noch kein unterstützter Supermarkt in deiner Nähe."
   },
   "supermarket": {
     "title": "Supermarkt-Angebote",
@@ -60,7 +62,11 @@
       "grains": "Getreide",
       "snacks": "Snacks",
       "beverages": "Getränke"
-    }
+    },
+    "noDeals": "Derzeit keine Angebote verfügbar.",
+    "loadError": "Angebote konnten nicht geladen werden.",
+    "dealsAvailable": "Angebote verfügbar",
+    "notCovered": "In deiner Region noch keine unterstützten Supermärkte."
   },
   "restaurant": {
     "title": "Restaurants",

@@ -290,23 +290,28 @@ function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-semibold text-gray-900">{restaurant.name}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="secondary" className="text-xs">
-                    <Star className="w-3 h-3 mr-1 text-yellow-500" />
-                    {restaurant.rating}
-                  </Badge>
-                  <span className="text-xs text-gray-500">
-                    ({restaurant.reviewCount} {t('restaurant.reviews')})
-                  </span>
-                </div>
+                {restaurant.rating > 0 && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary" className="text-xs">
+                      <Star className="w-3 h-3 mr-1 text-yellow-500" />
+                      {restaurant.rating}
+                    </Badge>
+                    <span className="text-xs text-gray-500">
+                      ({restaurant.reviewCount} {t('restaurant.reviews')})
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="text-right">
-                <span className="text-lg">{'€'.repeat(restaurant.priceRange)}</span>
-                {restaurant.isOpen ? (
-                  <Badge className="bg-green-500 text-white text-xs ml-2">{t('restaurant.open')}</Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs ml-2">{t('restaurant.closed')}</Badge>
+                {restaurant.priceRange > 0 && (
+                  <span className="text-lg">{'€'.repeat(restaurant.priceRange)}</span>
                 )}
+                {Object.keys(restaurant.openingHours).length > 0 &&
+                  (restaurant.isOpen ? (
+                    <Badge className="bg-green-500 text-white text-xs ml-2">{t('restaurant.open')}</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs ml-2">{t('restaurant.closed')}</Badge>
+                  ))}
               </div>
             </div>
 
