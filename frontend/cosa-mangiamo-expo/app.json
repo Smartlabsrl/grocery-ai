@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Cosa Mangiamo?",
+    "slug": "cosa-mangiamo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "it.cosamangiamo.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Cosa Mangiamo usa la tua posizione solo per mostrarti i supermercati asiatici vicini."
+      }
+    },
+    "android": {
+      "package": "it.cosamangiamo.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": ["expo-location"]
+    ,"extra": {
+      "eas": {
+        "projectId": "4cbc906b-07c8-4b72-a0b2-9faeadcb7512"
+      }
+    }
+  }
+}
