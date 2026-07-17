@@ -1,0 +1,39 @@
+name: Android development build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Cosa Mangiamo development APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/cosa-mangiamo-expo
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/cosa-mangiamo-expo/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Expo development dependencies
+        run: npx expo install expo-dev-client expo-updates
+
+      - name: Validate Expo configuration
+        run: npx expo config --type public
+
+      - name: Submit Android development build
+        run: npx eas-cli@latest build --platform android --profile development --non-interactive --no-wait
