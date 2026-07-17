@@ -5,6 +5,12 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4cbc906b-07c8-4b72-a0b2-9faeadcb7512"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "it.cosamangiamo.app",
