@@ -20,7 +20,7 @@ jobs:
       run:
         working-directory: frontend/cosa-mangiamo-expo
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_TOKEN: ${{ secrets.EXPO }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
