@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cosa Mangiamo?",
-    "slug": "cosa-mangiamo",
+    "slug": "cucinacinese",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -22,8 +22,8 @@
       "package": "it.cosamangiamo.app",
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
-    "plugins": ["expo-location"]
-    ,"extra": {
+    "plugins": ["expo-location"],
+    "extra": {
       "eas": {
         "projectId": "4cbc906b-07c8-4b72-a0b2-9faeadcb7512"
       }
