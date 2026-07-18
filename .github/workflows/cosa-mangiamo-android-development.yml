@@ -2,6 +2,12 @@ name: Android development build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - agent/add-cosa-mangiamo-expo
+    paths:
+      - frontend/cosa-mangiamo-expo/**
+      - .github/workflows/cosa-mangiamo-android-development.yml
 
 permissions:
   contents: read
